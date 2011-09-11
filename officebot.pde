@@ -394,6 +394,9 @@ void loop()
         case 'h': // set DD high
             digitalWrite(powerPin, HIGH);  
             break;
+        case 'L': // set DD low
+            digitalWrite(powerPin, LOW);  
+            break;
         case 'm': // return power state from power board (and thus Create, because the Create is powered from the power board)
             Serial.print(digitalRead(powerMonitor));  
             break;
