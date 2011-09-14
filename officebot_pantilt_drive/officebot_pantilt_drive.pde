@@ -61,18 +61,21 @@ sensorData726 sensors;
 
 */
 
-Roomba myBase(&Serial3); // instance for the Create on Serial3 (pins 16 and 17)
+Roomba myBase(&Serial2); // instance for the Create on Serial2 (pins 16 and 17)
 
-const int powerPin = 2;  // this pin is connected to the Create's Device Detect (DD) pin and is used to toggle power
-const int chargingIndicatorPin = 3;  // placeholder for monitoring if the create battery is being charged, not implemented yet
-const int powerMonitor = 4; // high if the power from the power box is on, meaning that the Create is on and so is the power box's switch
-const int powerIndicatorPin = 5;  // output to drive an LED that the user can see.
+
+const int powerPin = 4;  // this pin is connected to the Create's Device Detect (DD) pin and is used to toggle power
+const int chargingIndicatorPin = 5;  // placeholder for monitoring if the create battery is being charged, not implemented yet
+const int powerMonitor = 6; // high if the power from the power box is on, meaning that the Create is on and so is the power box's switch
+const int powerIndicatorPin = 7;  // output to drive an LED that the user can see.
 
 // drive inputs, put them on pins that can trigger interrupts-- NOTE THAT INTERRUPT NUMBERS ARE DIFFERENT THAN THE PIN NUMBERS!!
 const int forwardCmd = 5;   // interrupt 5 is on pin 18
 const int backwardCmd = 4;  // interrupt 4 is on pin 19
 const int rightCmd = 3;    // interrupt 3 is on pin 20
 const int leftCmd = 2;    // interrupt 2 is on pin 21
+
+const int emergencyShutdownCmd = 0;  // interrupt 0 is on pin 2  shuts down the create in response to a button push
 
 
 int driving = DRIVING_NONE; // true if it's in the driving state
@@ -104,10 +107,10 @@ void powerOnCreate()
         }  
 }
 
-void powerOffCreate()
-// power the Create off
+void powerOffCreate()  // power the Create off
 {
-        if (digitalRead(powerMonitor))  // if the power is on, turn the Create off.
+  myBase.drive(0, myBase.DriveStraight);  // stop moving
+  if (digitalRead(powerMonitor))  // if the power is on, turn the Create off.
         {
             digitalWrite(powerPin, LOW);
             delay (10);
@@ -118,6 +121,16 @@ void powerOffCreate()
         delay(500);
         if (!digitalRead(powerMonitor)) pinMode(powerIndicatorPin, LOW); 
         lastCmdMs = millis();  // remember when the command was done
+  driving = DRIVING_NONE;
+  baseTurnSpeed = 0;
+  baseFwdSpeed = 0;
+  lastCmdMs = millis();
+}
+
+void emergencyShutdown()
+{
+  noInterrupts();
+  powerOffCreate();
 }
 
 void moveForward()
@@ -267,9 +280,10 @@ void setup()
   attachInterrupt(backwardCmd, moveBackward, RISING);
   attachInterrupt(rightCmd, turnRight, RISING);
   attachInterrupt(leftCmd, turnLeft, RISING);
+  attachInterrupt(emergencyShutdownCmd, emergencyShutdown, CHANGE);
   
   // start serial port at 57600 bps for the create
-  Serial3.begin(57600); 
+  Serial2.begin(57600); 
   stop();  // this will power up the create and initialize the state
 }
 
