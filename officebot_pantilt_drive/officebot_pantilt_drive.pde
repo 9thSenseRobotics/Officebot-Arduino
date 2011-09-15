@@ -58,7 +58,6 @@ typedef struct
 
 
 sensorData726 sensors;
-
 */
 
 Roomba myBase(&Serial2); // instance for the Create on Serial2 (pins 16 and 17)
@@ -280,7 +279,7 @@ void setup()
   attachInterrupt(backwardCmd, moveBackward, RISING);
   attachInterrupt(rightCmd, turnRight, RISING);
   attachInterrupt(leftCmd, turnLeft, RISING);
-  attachInterrupt(emergencyShutdownCmd, emergencyShutdown, CHANGE);
+  attachInterrupt(emergencyShutdownCmd, emergencyShutdown, LOW);
   
   // start serial port at 57600 bps for the create
   Serial2.begin(57600); 
@@ -291,6 +290,15 @@ void loop()
 {   
   if ((millis() > lastCmdMs + TIME_OUT) && (driving != DRIVING_NONE) ) stop();
   if (millis() > lastCmdMs + TURN_OFF_CREATE) powerOffCreate();
-  delay(10);
+  
+  /*
+  myBase.getSensors (myBase.Sensors7to26, (uint8_t *)&sensors, sizeof(sensors));
+  // should be unnecessary in safe mode; here for testing
+  if (sensors.bumpsAndWheelDrops || sensors.wall || sensors.cliffLeft || sensors.cliffFrontLeft ||
+          sensors.cliffFrontRight || sensors.cliffRight || sensors.virtualWall) stop();
+          
+  */
+  
+  delay(100);
 }
  
