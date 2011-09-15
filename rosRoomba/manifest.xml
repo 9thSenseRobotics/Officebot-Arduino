@@ -1,0 +1,18 @@
+<package>
+  <description brief="Roomba control with arduino"/>
+  <author>Dan Barry</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+
+  <depend package="std_msgs"/>
+  <depend package="sensor_msgs"/>
+  <depend package="geometry_msgs"/>
+  <depend package="nav_msgs"/>
+  <depend package="rosserial_client"/>
+
+  <rosdep name="gcc-avr"/>
+  <rosdep name="avr-libc"/>
+  
+</package>
+
+

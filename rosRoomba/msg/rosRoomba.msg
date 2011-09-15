@@ -1,0 +1,27 @@
+  uint8 bumpsAndWheelDrops 
+  uint8 wall 
+  uint8 cliffLeft 
+  uint8 cliffFrontLeft 
+  uint8 cliffFrontRight 
+  uint8 cliffRight 
+  uint8 virtualWall 
+  uint8 lsdWheelCurrents 
+  uint8 unused1 
+  uint8 unused2 
+  uint8 irByte 
+  uint8 buttons 
+  uint16 distance 
+  uint16 angle 
+  uint8 chargingState 
+  int16 voltage 
+  int16 current 
+  int8 batteryTemp 
+  uint16 batteryCharge 
+  uint16 batteryCapacity
+  int16 drivingMode
+  int16 FwdCommandSpeed
+  int16 TurnCommandSpeed
+  uint16 SecondsSinceLastCommand
+  int16 PowerBoxOn
+  int16 EmergencyShutdown
+   
