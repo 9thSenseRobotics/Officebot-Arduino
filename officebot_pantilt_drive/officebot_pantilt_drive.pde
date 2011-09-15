@@ -69,10 +69,11 @@ const int powerMonitor = 6; // high if the power from the power box is on, meani
 const int powerIndicatorPin = 7;  // output to drive an LED that the user can see.
 
 // drive inputs, put them on pins that can trigger interrupts-- NOTE THAT INTERRUPT NUMBERS ARE DIFFERENT THAN THE PIN NUMBERS!!
-const int forwardCmd = 5;   // interrupt 5 is on pin 18
-const int backwardCmd = 4;  // interrupt 4 is on pin 19
-const int rightCmd = 3;    // interrupt 3 is on pin 20
-const int leftCmd = 2;    // interrupt 2 is on pin 21
+const int forwardCmd = 2;   // interrupt 2 is on pin 21
+const int backwardCmd = 3;  // interrupt 3 is on pin 20
+const int leftCmd = 4;    // interrupt 4 is on pin 19
+const int rightCmd = 5;    // interrupt 5 is on pin 18
+
 
 const int emergencyShutdownCmd = 0;  // interrupt 0 is on pin 2  shuts down the create in response to a button push
 
@@ -277,8 +278,8 @@ void setup()
   //Attach an interrupt to the input pins and monitor for low to high transitions
   attachInterrupt(forwardCmd, moveForward, RISING);
   attachInterrupt(backwardCmd, moveBackward, RISING);
-  attachInterrupt(rightCmd, turnRight, RISING);
   attachInterrupt(leftCmd, turnLeft, RISING);
+  attachInterrupt(rightCmd, turnRight, RISING);
   attachInterrupt(emergencyShutdownCmd, emergencyShutdown, LOW);
   
   // start serial port at 57600 bps for the create
