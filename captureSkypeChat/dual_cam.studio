@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE preferences SYSTEM "http://java.sun.com/dtd/preferences.dtd">
+<preferences EXTERNAL_XML_VERSION="1.0">
+  <root type="user">
+    <map/>
+    <node name="webcamstudio">
+      <map/>
+      <node name="studio">
+        <map>
+          <entry key="device" value="/dev/video0"/>
+          <entry key="enabledaudiomixer" value="false"/>
+          <entry key="height" value="480"/>
+          <entry key="pixformat" value="2"/>
+          <entry key="width" value="640"/>
+        </map>
+        <node name="Layouts">
+          <map/>
+          <node name="0000000000">
+            <map>
+              <entry key="duration" value="0"/>
+              <entry key="hotkey" value="F1"/>
+              <entry key="inputsource" value="alsa_output.pci-0000_00_1b.0.analog-stereo.monitor"/>
+              <entry key="inputsourceapp" value="skype"/>
+              <entry key="name" value="New Layout"/>
+              <entry key="nextlayout" value=""/>
+              <entry key="uuid" value="2852eb30-8409-49ec-a42a-1d94515031e5"/>
+            </map>
+            <node name="Items">
+              <map/>
+              <node name="0">
+                <map>
+                  <entry key="X" value="0"/>
+                  <entry key="Y" value="0"/>
+                  <entry key="height" value="480"/>
+                  <entry key="layer" value="0"/>
+                  <entry key="transitionin" value="Start"/>
+                  <entry key="transitionout" value="Stop"/>
+                  <entry key="uuid" value="7e117720-1e0c-4509-b5ca-c6b93a7b4159"/>
+                  <entry key="volume" value="10"/>
+                  <entry key="width" value="640"/>
+                </map>
+                <node name="source">
+                  <map>
+                    <entry key="activeEffect" value=""/>
+                    <entry key="activitythreshold" value="0"/>
+                    <entry key="audiosink" value="autoaudiosink"/>
+                    <entry key="background" value="-16777216"/>
+                    <entry key="bgopacity" value="0.0"/>
+                    <entry key="captureAtX" value="0"/>
+                    <entry key="captureAtY" value="0"/>
+                    <entry key="captureHeight" value="240"/>
+                    <entry key="captureWidth" value="320"/>
+                    <entry key="class" value="webcamstudio.sources.VideoSourceV4L2"/>
+                    <entry key="colorformat" value="yuv"/>
+                    <entry key="customshapefilename" value=""/>
+                    <entry key="customtext" value=""/>
+                    <entry key="effectsSensitivityHigh" value="100"/>
+                    <entry key="effectsSensitivityLow" value="10"/>
+                    <entry key="followmousecursor" value="true"/>
+                    <entry key="fontname" value="Monospaced"/>
+                    <entry key="fontsize" value="10"/>
+                    <entry key="foreground" value="-1"/>
+                    <entry key="forvieweronly" value="false"/>
+                    <entry key="frameRate" value="15"/>
+                    <entry key="ignorelayouttransition" value="false"/>
+                    <entry key="layer" value="0"/>
+                    <entry key="location" value="/dev/video2"/>
+                    <entry key="name" value="UVC Camera (046d:08ca) (video2)"/>
+                    <entry key="nick" value=""/>
+                    <entry key="outputHeight" value="480"/>
+                    <entry key="outputWidth" value="640"/>
+                    <entry key="password" value=""/>
+                    <entry key="rescale" value="true"/>
+                    <entry key="reverseshapemask" value="false"/>
+                    <entry key="scrollDirection" value="0"/>
+                    <entry key="shapename" value=""/>
+                    <entry key="showAtX" value="0"/>
+                    <entry key="showAtY" value="0"/>
+                    <entry key="showmousecursor" value="false"/>
+                    <entry key="updatetimelapse" value="0"/>
+                    <entry key="username" value=""/>
+                    <entry key="uuid" value="7e117720-1e0c-4509-b5ca-c6b93a7b4159"/>
+                    <entry key="videoeffect" value="0"/>
+                    <entry key="virtualhostkeywords" value=""/>
+                    <entry key="visibleOnlyWhenSelected" value="false"/>
+                    <entry key="volume" value="10"/>
+                  </map>
+                </node>
+              </node>
+              <node name="1">
+                <map>
+                  <entry key="X" value="440"/>
+                  <entry key="Y" value="330"/>
+                  <entry key="height" value="150"/>
+                  <entry key="layer" value="1"/>
+                  <entry key="transitionin" value="Start"/>
+                  <entry key="transitionout" value="Stop"/>
+                  <entry key="uuid" value="7c13136d-1f7f-4c89-be8a-36ec743adbaa"/>
+                  <entry key="volume" value="10"/>
+                  <entry key="width" value="200"/>
+                </map>
+                <node name="source">
+                  <map>
+                    <entry key="activeEffect" value=""/>
+                    <entry key="activitythreshold" value="0"/>
+                    <entry key="audiosink" value="autoaudiosink"/>
+                    <entry key="background" value="-16777216"/>
+                    <entry key="bgopacity" value="0.0"/>
+                    <entry key="captureAtX" value="0"/>
+                    <entry key="captureAtY" value="0"/>
+                    <entry key="captureHeight" value="240"/>
+                    <entry key="captureWidth" value="320"/>
+                    <entry key="class" value="webcamstudio.sources.VideoSourceV4L2"/>
+                    <entry key="colorformat" value="yuv"/>
+                    <entry key="customshapefilename" value=""/>
+                    <entry key="customtext" value=""/>
+                    <entry key="effectsSensitivityHigh" value="100"/>
+                    <entry key="effectsSensitivityLow" value="10"/>
+                    <entry key="followmousecursor" value="true"/>
+                    <entry key="fontname" value="Monospaced"/>
+                    <entry key="fontsize" value="10"/>
+                    <entry key="foreground" value="-1"/>
+                    <entry key="forvieweronly" value="false"/>
+                    <entry key="frameRate" value="15"/>
+                    <entry key="ignorelayouttransition" value="false"/>
+                    <entry key="layer" value="1"/>
+                    <entry key="location" value="/dev/video1"/>
+                    <entry key="name" value="USB Camera-B4.04.27.1 (video1)"/>
+                    <entry key="nick" value=""/>
+                    <entry key="outputHeight" value="150"/>
+                    <entry key="outputWidth" value="200"/>
+                    <entry key="password" value=""/>
+                    <entry key="rescale" value="true"/>
+                    <entry key="reverseshapemask" value="false"/>
+                    <entry key="scrollDirection" value="0"/>
+                    <entry key="shapename" value=""/>
+                    <entry key="showAtX" value="440"/>
+                    <entry key="showAtY" value="330"/>
+                    <entry key="showmousecursor" value="false"/>
+                    <entry key="updatetimelapse" value="0"/>
+                    <entry key="username" value=""/>
+                    <entry key="uuid" value="7c13136d-1f7f-4c89-be8a-36ec743adbaa"/>
+                    <entry key="videoeffect" value="0"/>
+                    <entry key="virtualhostkeywords" value=""/>
+                    <entry key="visibleOnlyWhenSelected" value="false"/>
+                    <entry key="volume" value="10"/>
+                  </map>
+                </node>
+              </node>
+            </node>
+          </node>
+        </node>
+      </node>
+    </node>
+  </root>
+</preferences>

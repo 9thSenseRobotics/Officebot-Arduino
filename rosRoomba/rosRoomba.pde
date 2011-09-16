@@ -67,8 +67,10 @@ ros::NodeHandle  nh;
 
 ros::Subscriber<std_msgs::String> subscriberSkype("SkypeChat", &skypeCallback );
   
+std_msgs::String ReceivedCommands;
 rosRoomba::rosRoomba RobotStateMsg;
 ros::Publisher robot_state("robot_state",&RobotStateMsg);
+ros::Publisher robot_commands("robot_commands", &ReceivedCommands);
 
 const int powerPin = 4;  // this pin is connected to the Create's Device Detect (DD) pin and is used to toggle power
 const int chargingIndicatorPin = 5;  // placeholder for monitoring if the create battery is being charged, not implemented yet
@@ -76,10 +78,10 @@ const int powerMonitor = 6; // high if the power from the power box is on, meani
 const int powerIndicatorPin = 7;  // output to drive an LED that the user can see.
 
 // drive inputs, put them on pins that can trigger interrupts-- NOTE THAT INTERRUPT NUMBERS ARE DIFFERENT THAN THE PIN NUMBERS!!
-const int forwardCmd = 5;   // interrupt 5 is on pin 18
-const int backwardCmd = 4;  // interrupt 4 is on pin 19
-const int rightCmd = 3;    // interrupt 3 is on pin 20
-const int leftCmd = 2;    // interrupt 2 is on pin 21
+const int forwardCmd = 2;   // interrupt 2 is on pin 21
+const int backwardCmd = 3;  // interrupt 3 is on pin 20
+const int leftCmd = 4;   // interrupt 4 is on pin 19 
+const int rightCmd = 5;  // interrupt 5 is on pin 18
 
 const int emergencyShutdownCmd = 0;  // interrupt 0 is on pin 2  shuts down the create in response to a button push
 
@@ -91,6 +93,8 @@ int emergencyShutdownReceived = 0;
 
 void skypeCallback( const std_msgs::String& msgSkype)
 {
+    ReceivedCommands = msgSkype;
+    robot_commands.publish(&ReceivedCommands);
     if (strlen( (const char* ) msgSkype.data) > 2 ) return;  // invalid format, more than 2 characters
     char cmd = msgSkype.data[0];
     if (strlen( (const char* ) msgSkype.data) > 1 )
@@ -103,6 +107,10 @@ void skypeCallback( const std_msgs::String& msgSkype)
     
     switch(cmd)
     {
+      case 's':    // stop
+        stop();
+        break;
+      
       case 'f':  // move forward
         if (speedCmd == 0) moveForward();
         else moveCommandedSpeed();
@@ -132,7 +140,8 @@ void skypeCallback( const std_msgs::String& msgSkype)
         break;
       
       default:  // unknown command
-        return;  
+        //stop();  w// we need to ignore, not stop because otherwise we will stop when people are just saying stuff like "hi"
+        break;
     }
 
 }
@@ -411,6 +420,7 @@ void setup()
 
   nh.initNode();
   nh.advertise(robot_state);
+  nh.advertise(robot_commands);
   nh.subscribe(subscriberSkype);
   
 
@@ -426,9 +436,9 @@ void loop()
     myBase.getSensors (myBase.Sensors7to26, (uint8_t *)&sensors, sizeof(sensors));
     
     if (sensors.bumpsAndWheelDrops || sensors.wall || sensors.cliffLeft || sensors.cliffFrontLeft ||
-          sensors.cliffFrontRight || sensors.cliffRight || sensors.virtualWall) stop();
-          
-    unsigned int deltaT = (int) ( (millis() - lastCmdMs)/1000)); // time in seconds since last command
+         sensors.cliffFrontRight || sensors.cliffRight || sensors.virtualWall) stop();
+         
+    unsigned int deltaT = (int) ( (millis() - lastCmdMs)/1000); // time in seconds since last command
     
     RobotStateMsg.bumpsAndWheelDrops = sensors.bumpsAndWheelDrops;
     RobotStateMsg.wall = sensors.wall;

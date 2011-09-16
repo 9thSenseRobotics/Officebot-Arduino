@@ -1,0 +1,13 @@
+<package>
+  <description brief="Skype chat capture"/>
+  <author>Dan Barry</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+
+  <depend package="std_msgs"/>
+  <depend package="roscpp"/>
+  <depend package="rospy"/>
+  
+</package>
+
+
