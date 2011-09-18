@@ -10,7 +10,7 @@
 # This software may be used and distributed according to the terms
 # of the GNU Public License, incorporated herein by reference.
 
-import roslib; roslib.load_manifest('CaptureSkypeChat')
+import roslib; roslib.load_manifest('captureSkypeChat')
 import rospy
 from std_msgs.msg import String
 import sys

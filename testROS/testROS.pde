@@ -1,14 +1,14 @@
+// rosRoomba receives ROS messages for movement commands, also monitors interrupt pins for movement commands
+// publishes the roomba sensors to "robot_state"
 
-// This code controls the Create
-// Created by Zhengqin Fan
-// Modified 2011-09-09 by Alaina Hardie
-// Modified 2011-09-14 by Dan Barry
+// Requires Roomba, ROS library folders, and rosRoomba folder with header file, to be located in sketchbook/libraries
 
-// Requires Roomba library, available at:
-// http://www.open.com.au/mikem/arduino/Roomba/
-
+#include <ros.h>
+#include <std_msgs/String.h>
 #include <Roomba.h>
- 
+#include <rosRoomba/rosRoomba.h>
+
+
 #define DRIVING_NONE 0
 #define DRIVING_FORWARD 1
 #define DRIVING_BACKWARD 2
@@ -31,7 +31,8 @@
 #define TIME_OUT 3000  // number of milliseconds to wait for command before you consider it a timeout and stop the base
 #define TURN_OFF_CREATE 900000  // number of milliseconds of inactivity before powering down create to save battery power (15 min = 900 seconds = 900000 msec)
 
-/*
+#define PUBLISH_RATE 100  // only publish once every PUBLISH_RATE times through the main loop
+
 typedef struct 
 {
   uint8_t bumpsAndWheelDrops ; // packet id 7
@@ -58,10 +59,19 @@ typedef struct
 
 
 sensorData726 sensors;
-*/
+
+void skypeCallback( const std_msgs::String& msgSkype);
 
 Roomba myBase(&Serial2); // instance for the Create on Serial2 (pins 16 and 17)
 
+ros::NodeHandle  nh;
+
+ros::Subscriber<std_msgs::String> subscriberSkype("SkypeChat", &skypeCallback );
+  
+std_msgs::String ReceivedCommands;
+rosRoomba::rosRoomba RobotStateMsg;
+ros::Publisher robot_state("robot_state",&RobotStateMsg);
+ros::Publisher robot_commands("robot_commands", &ReceivedCommands);
 
 const int powerPin = 4;  // this pin is connected to the Create's Device Detect (DD) pin and is used to toggle power
 const int chargingIndicatorPin = 5;  // placeholder for monitoring if the create battery is being charged, not implemented yet
@@ -71,21 +81,77 @@ const int powerIndicatorPin = 7;  // output to drive an LED that the user can se
 // drive inputs, put them on pins that can trigger interrupts-- NOTE THAT INTERRUPT NUMBERS ARE DIFFERENT THAN THE PIN NUMBERS!!
 const int forwardCmd = 2;   // interrupt 2 is on pin 21
 const int backwardCmd = 3;  // interrupt 3 is on pin 20
-const int leftCmd = 4;    // interrupt 4 is on pin 19
-const int rightCmd = 5;    // interrupt 5 is on pin 18
-
+const int leftCmd = 4;   // interrupt 4 is on pin 19 
+const int rightCmd = 5;  // interrupt 5 is on pin 18
 
 const int emergencyShutdownCmd = 0;  // interrupt 0 is on pin 2  shuts down the create in response to a button push
 
-
 int driving = DRIVING_NONE; // true if it's in the driving state
 unsigned long lastCmdMs; // The number of milliseconds since the program started that the last command was received
-int baseFwdSpeed, baseTurnSpeed;
+int baseFwdSpeed, baseTurnSpeed, speedCmd;
+int counter;  // inside the loop we will only publish once every PUBLISH_RATE cycles
+int emergencyShutdownReceived = 0;
+
+void skypeCallback( const std_msgs::String& msgSkype)
+{
+    ReceivedCommands = msgSkype;
+    robot_commands.publish(&ReceivedCommands);
+    if (strlen( (const char* ) msgSkype.data) > 2 ) return;  // invalid format, more than 2 characters
+    char cmd = msgSkype.data[0];
+    if (strlen( (const char* ) msgSkype.data) > 1 )
+    {
+      speedCmd = (int)msgSkype.data[1];
+      if (speedCmd < 49  || speedCmd > 57) return;  // invalid format, not a number between 1 and 9
+      speedCmd = (speedCmd - 48) * MIN_FORWARD_SPEED;
+    }
+    else speedCmd = 0;  // speed not specified, so we will just increase or decrease by DELTA
+    
+    switch(cmd)
+    {
+      case 's':    // stop
+        stop();
+        break;
+      
+      case 'f':  // move forward
+        if (speedCmd == 0) moveForward();
+        else moveCommandedSpeed();
+        break;
+        
+      case 'b':  //move backward
+        if (speedCmd == 0) moveBackward();
+        else 
+        {
+          speedCmd *= -1;
+          moveCommandedSpeed();
+        }
+        break;
+        
+      case 'r':  //turn right
+        if (speedCmd == 0) turnRight();
+        else turnCommandedSpeed();
+        break;
+        
+      case 'l':  // turn left
+        if (speedCmd == 0) turnLeft();
+        else 
+        {
+          speedCmd *= -1;
+          turnCommandedSpeed();
+        }
+        break;
+      
+      default:  // unknown command
+        //stop();  w// we need to ignore, not stop because otherwise we will stop when people are just saying stuff like "hi"
+        break;
+    }
+
+}
+
 
 void powerOnCreate()
 // power the Create on
 {
-     /*   if (!digitalRead(powerMonitor))  // if the power is off, turn the Create on.
+        if (!digitalRead(powerMonitor))  // if the power is off, turn the Create on.
         {
             digitalWrite(powerPin, LOW);
             delay (10);
@@ -102,10 +168,9 @@ void powerOnCreate()
             pinMode(powerIndicatorPin, LOW);
             delay(2000); // takes a couple seconds to be ready to drive
             myBase.start();
-            myBase.fullMode();
+            myBase.safeMode();
             pinMode(powerIndicatorPin, HIGH);           
         }  
-        */
 }
 
 void powerOffCreate()  // power the Create off
@@ -125,12 +190,14 @@ void powerOffCreate()  // power the Create off
   driving = DRIVING_NONE;
   baseTurnSpeed = 0;
   baseFwdSpeed = 0;
+  speedCmd = 0;
   lastCmdMs = millis();
 }
 
 void emergencyShutdown()
 {
   noInterrupts();
+  emergencyShutdownReceived = 1;
   powerOffCreate();
 }
 
@@ -188,6 +255,33 @@ void moveBackward()
   }
   baseTurnSpeed = 0;
   lastCmdMs = millis();  // remember when the command was done
+}
+
+void moveCommandedSpeed()
+{
+    powerOnCreate();
+    if (speedCmd > baseFwdSpeed) 
+    {
+      while (speedCmd > baseFwdSpeed)
+      {
+        baseFwdSpeed += DELTA_FORWARD_SPEED;
+        myBase.drive(baseFwdSpeed, myBase.DriveStraight);
+        delay(RAMPUP_SPEED_DELAY);
+      }
+    }
+    else
+    {
+      while (speedCmd < baseFwdSpeed)
+      {
+        baseFwdSpeed -= DELTA_FORWARD_SPEED;
+        myBase.drive(baseFwdSpeed, myBase.DriveStraight);
+        delay(RAMPUP_SPEED_DELAY);
+      }
+    }
+    if (baseFwdSpeed > 0) driving = DRIVING_FORWARD;
+    else driving = DRIVING_BACKWARD;
+    baseTurnSpeed = 0;
+    lastCmdMs = millis();  // remember when the command was done
 }
 
 void turnRight()
@@ -258,53 +352,91 @@ void turnLeft()
   lastCmdMs = millis();  // remember when the command was done
 }
 
+void turnCommandedSpeed()
+{
+    powerOnCreate();
+    bool turnRight = true;
+    driving = DRIVING_TURNRIGHT;
+    if (speedCmd < 0)    // a negative speedCmd means to turn left
+    {
+      turnRight = false;
+      speedCmd *= -1;
+      driving = DRIVING_TURNLEFT;
+    }
+    if (speedCmd > baseTurnSpeed) 
+    {
+      while (speedCmd > baseFwdSpeed)  // if we are changing direction of the turn, then this will happen without a rampup, but that is OK, since it suggests a need to turn fast.
+      {
+        baseTurnSpeed += DELTA_TURN_SPEED;
+        if (turnRight) myBase.drive(baseTurnSpeed, myBase.DriveInPlaceCounterClockwise); // this is wrong, for some reason; left should be counter and right should be clockwise
+        else myBase.drive(baseTurnSpeed, myBase.DriveInPlaceClockwise); // this is wrong, for some reason; left should be counter and right should be clockwise
+        delay(RAMPUP_SPEED_DELAY);
+      }
+    }
+    else
+    {
+      while (speedCmd < baseFwdSpeed)
+      {
+        baseTurnSpeed -= DELTA_TURN_SPEED;
+        if (turnRight) myBase.drive(baseTurnSpeed, myBase.DriveInPlaceCounterClockwise); // this is wrong, for some reason; left should be counter and right should be clockwise
+        else myBase.drive(baseTurnSpeed, myBase.DriveInPlaceClockwise); // this is wrong, for some reason; left should be counter and right should be clockwise
+        delay(RAMPUP_SPEED_DELAY);
+      }
+    }
+    baseFwdSpeed = 0;
+    lastCmdMs = millis();  // remember when the command was done
+}
+
 
 void stop()
 {
-  powerOnCreate();
+ // powerOnCreate();
   myBase.drive(0, myBase.DriveStraight);
   driving = DRIVING_NONE;
   baseTurnSpeed = 0;
   baseFwdSpeed = 0;
+  speedCmd = 0;
   lastCmdMs = millis();
 }
   
 
-void setup() 
-{ 
+std_msgs::String str_msg;
+ros::Publisher chatter("chatter", &str_msg);
+
+char hello[13] = "hello world!";
+
+void setup()
+{
   pinMode(powerPin, OUTPUT); // toggle DD to toggle power on the Create
   pinMode(powerMonitor, INPUT); // high if power from Create via power board (and power board's switch) is on
   pinMode(powerIndicatorPin, OUTPUT); // output to drive an LED that the user can see.
   
-  //Attach an interrupt to the input pins and monitor for low to high transitions
-  attachInterrupt(forwardCmd, moveForward, RISING);
+    //Attach an interrupt to the input pins and monitor for low to high transitions
+ /* attachInterrupt(forwardCmd, moveForward, RISING);
   attachInterrupt(backwardCmd, moveBackward, RISING);
-  attachInterrupt(leftCmd, turnLeft, RISING);
   attachInterrupt(rightCmd, turnRight, RISING);
+  attachInterrupt(leftCmd, turnLeft, RISING);
   attachInterrupt(emergencyShutdownCmd, emergencyShutdown, LOW);
+  */
   
+  counter = 0;  // report robot state on first pass through the loop
   // start serial port at 57600 bps for the create
-  //Serial2.begin(57600); 
-  myBase.start();
-  myBase.fullMode();
-  stop();  // this will power up the create and initialize the state
+  Serial2.begin(57600); 
+   myBase.start();
+   myBase.safeMode();
+   stop();  // this will power up the create and initialize the state
+  
+  nh.initNode();
+  nh.advertise(chatter);
+ // nh.advertise(robot_state);
+  nh.advertise(robot_commands);
+  nh.subscribe(subscriberSkype);
 }
 
-void loop() 
-{   
-  //if ((millis() > lastCmdMs + TIME_OUT) && (driving != DRIVING_NONE) ) stop();
-  //if (millis() > lastCmdMs + TURN_OFF_CREATE) powerOffCreate();
-  
-  /*
-  myBase.getSensors (myBase.Sensors7to26, (uint8_t *)&sensors, sizeof(sensors));
-  // should be unnecessary in safe mode; here for testing
-  if (sensors.bumpsAndWheelDrops || sensors.wall || sensors.cliffLeft || sensors.cliffFrontLeft ||
-          sensors.cliffFrontRight || sensors.cliffRight || sensors.virtualWall) stop();
-          
-  */
-  roomba.leds(0x02,128,255);
-  delay(500);
-  roomba.leds(0x00,0,128);
-  delay(500);
+void loop()
+{
+  str_msg.data = hello;
+  chatter.publish( &str_msg );
+  nh.spinOnce();
+  delay(1000);
 }
- 

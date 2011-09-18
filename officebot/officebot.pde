@@ -447,8 +447,8 @@ void loop()
 
 
 void establishContact() {
-  while (Serial.available() <= 0) {
-    Serial.print('A');   // send a capital A
+  while (Serial2.available() <= 0) {
+    Serial2.print('A');   // send a capital A
     delay(300);
     }
 }
