@@ -63,12 +63,15 @@ the middle green light on, and the colored one to green, half intensity
 #define MIN_TURN_SPEED 50
 #define DELTA_FORWARD_SPEED 50
 #define DELTA_TURN_SPEED 50
-#define DEFAULT_FORWARD_SPEED 300
+#define DEFAULT_FORWARD_SPEED 500
 #define DEFAULT_BACKWARD_SPEED -300
 #define DEFAULT_TURN_SPEED 300
 #define RAMPUP_SPEED_DELAY 300  // controls how long between speed steps when ramping up from a stop to default speed
 
-#define TIME_OUT 3000  // number of milliseconds to wait for command before you consider it a timeout and stop the base
+
+#define TURN_TIME 200
+#define MOVE_TIME 2000
+#define TIME_OUT 5000  // number of milliseconds to wait for command before you consider it a timeout and stop the base
 #define TURN_OFF_CREATE 900000  // number of milliseconds of inactivity before powering down create to save battery power (15 min = 900 seconds = 900000 msec)
 
 #define PUBLISH_RATE 100  // only publish once every PUBLISH_RATE times through the main loop
@@ -147,17 +150,39 @@ void skypeCallback( const std_msgs::String& msgSkype)
         slowStop();
         break;
         
+      case 'S':    // stop
+        slowStop();
+        break;
+        
       case 'q':    // stop
+        stop();
+        break;
+        
+      case 'Q':    // stop
         stop();
         break;
       
       case 'f':  // move forward
-        if (speedCmd == 0) moveForward();
+        if (speedCmd == 0) moveForwardNow();
+        else moveCommandedSpeed();
+        break;
+        
+      case 'F':  // move forward
+        if (speedCmd == 0) moveForwardNow();
         else moveCommandedSpeed();
         break;
         
       case 'b':  //move backward
-        if (speedCmd == 0) moveBackward();
+        if (speedCmd == 0) moveBackwardNow();
+        else 
+        {
+          speedCmd *= -1;
+          moveCommandedSpeed();
+        }
+        break;
+        
+      case 'B':  //move backward
+        if (speedCmd == 0) moveBackwardNow();
         else 
         {
           speedCmd *= -1;
@@ -166,12 +191,26 @@ void skypeCallback( const std_msgs::String& msgSkype)
         break;
         
       case 'r':  //turn right
-        if (speedCmd == 0) turnRight();
+        if (speedCmd == 0) turnRightNow();
+        else turnCommandedSpeed();
+        break;
+        
+      case 'R':  //turn right
+        if (speedCmd == 0) turnRightNow();
         else turnCommandedSpeed();
         break;
         
       case 'l':  // turn left
-        if (speedCmd == 0) turnLeft();
+        if (speedCmd == 0) turnLeftNow();
+        else 
+        {
+          speedCmd *= -1;
+          turnCommandedSpeed();
+        }
+        break;
+        
+      case 'L':  // turn left
+        if (speedCmd == 0) turnLeftNow();
         else 
         {
           speedCmd *= -1;
@@ -377,6 +416,43 @@ void turnRight()
   lastCmdMs = millis();  // remember when the command was done
 }
 
+void moveForwardNow()
+{
+  lastCmdMs = millis();  // remember when the command was done
+  myBase.drive(DEFAULT_FORWARD_SPEED, myBase.DriveStraight);
+  delay(MOVE_TIME);
+  slowStop();
+  driving = DRIVING_NONE;
+}
+
+void moveBackwardNow()
+{
+  lastCmdMs = millis();  // remember when the command was done
+  myBase.drive(DEFAULT_BACKWARD_SPEED, myBase.DriveStraight);
+  delay(MOVE_TIME);
+  myBase.drive(0, myBase.DriveStraight);
+  driving = DRIVING_NONE;
+}
+
+void turnRightNow()
+{
+  lastCmdMs = millis();  // remember when the command was done
+  myBase.drive(DEFAULT_TURN_SPEED, myBase.DriveInPlaceClockwise);
+  delay(TURN_TIME);
+  myBase.drive(0, myBase.DriveInPlaceCounterClockwise);
+  driving = DRIVING_NONE;
+}
+
+void turnLeftNow()
+{
+  lastCmdMs = millis();  // remember when the command was done
+  myBase.drive(DEFAULT_TURN_SPEED, myBase.DriveInPlaceCounterClockwise);
+  delay(TURN_TIME);
+  myBase.drive(0, myBase.DriveInPlaceCounterClockwise);
+  driving = DRIVING_NONE;
+}
+
+  
 void turnLeft()
 {
   powerOnCreate();
@@ -623,7 +699,7 @@ void setup()
 
 void loop() 
 {   
-  myBase.leds(0x02,0,128);  // visual indicator that we are at the top of the loop, all is well
+  myBase.leds(0x02,0,32);  // visual indicator that we are at the top of the loop, all is well
   if ((millis() > lastCmdMs + TIME_OUT) && (driving != DRIVING_NONE) ) stop();
   
   //if (millis() > lastCmdMs + TURN_OFF_CREATE) powerOffCreate();
@@ -634,9 +710,9 @@ void loop()
   //if (counter > 10000) counter = PUBLISH_RATE;
   //counter++;
 
-  myBase.leds(0x08,255,128);  // visual indicator that we are stuck inside the loop
-  str_msg.data = hello;
-  chatter.publish( &str_msg );
+  //myBase.leds(0x08,255,32);  // visual indicator that we are stuck inside the loop
+ // str_msg.data = hello;
+  //chatter.publish( &str_msg );
   
   /*
   if (nh.connected()) nh.spinOnce();  // spinOnce() is a blocking call if comm is lost to ROS
