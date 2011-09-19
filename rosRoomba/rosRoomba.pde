@@ -60,18 +60,19 @@ the middle green light on, and the colored one to green, half intensity
 #define MAX_TURN_SPEED 500
 #define MIN_FORWARD_SPEED 50
 #define MIN_BACKWARD_SPEED -50
-#define MIN_TURN_SPEED 50
+#define MIN_TURN_SPEED 100
 #define DELTA_FORWARD_SPEED 50
-#define DELTA_TURN_SPEED 50
-#define DEFAULT_FORWARD_SPEED 500
+#define DELTA_BACKWARD_SPEED -50
+#define DELTA_TURN_SPEED 100
+#define DEFAULT_FORWARD_SPEED 300
 #define DEFAULT_BACKWARD_SPEED -300
 #define DEFAULT_TURN_SPEED 300
-#define RAMPUP_SPEED_DELAY 300  // controls how long between speed steps when ramping up from a stop to default speed
+#define RAMPUP_SPEED_DELAY 200  // controls how long between speed steps when ramping up from a stop to default speed
 
 
-#define TURN_TIME 200
-#define MOVE_TIME 2000
-#define TIME_OUT 5000  // number of milliseconds to wait for command before you consider it a timeout and stop the base
+#define MIN_TURN_TIME 100
+#define MIN_MOVE_TIME 500
+#define TIME_OUT 8000  // number of milliseconds to wait for command before you consider it a timeout and stop the base
 #define TURN_OFF_CREATE 900000  // number of milliseconds of inactivity before powering down create to save battery power (15 min = 900 seconds = 900000 msec)
 
 #define PUBLISH_RATE 100  // only publish once every PUBLISH_RATE times through the main loop
@@ -114,10 +115,6 @@ ros::Publisher robot_commands("robot_commands", &ReceivedCommands);
 void skypeCallback( const std_msgs::String& msgSkype);
 ros::Subscriber<std_msgs::String> subscriberSkype("SkypeChat", &skypeCallback );
 
-std_msgs::String str_msg;
-ros::Publisher chatter("chatter", &str_msg);
-char hello[13] = "hello world!";
-
 const int powerPin = 4;  // this pin is connected to the Create's Device Detect (DD) pin and is used to toggle power
 const int chargingIndicatorPin = 5;  // placeholder for monitoring if the create battery is being charged, not implemented yet
 const int powerMonitor = 6; // high if the power from the power box is on, meaning that the Create is on and so is the power box's switch
@@ -126,96 +123,100 @@ const int emergencyShutdownCmd = 0;  // interrupt 0 is on pin 2  shuts down the 
 
 int driving = DRIVING_NONE; // true if it's in the driving state
 unsigned long lastCmdMs; // The number of milliseconds since the program started that the last command was received
-int baseFwdSpeed, baseTurnSpeed, speedCmd;
+int baseStraightSpeed, baseTurnSpeed;
 int counter;  // inside the loop we will only publish once every PUBLISH_RATE cycles
 int emergencyShutdownReceived = 0;
+int numSteps; // number of incremental movements to do
 
 void skypeCallback( const std_msgs::String& msgSkype)
 {
     ReceivedCommands = msgSkype;
     robot_commands.publish(&ReceivedCommands);
-    if (strlen( (const char* ) msgSkype.data) > 2 ) return;  // invalid format, more than 2 characters
-    char cmd = msgSkype.data[0];
-    if (strlen( (const char* ) msgSkype.data) > 1 )
-    {
-      speedCmd = (int)msgSkype.data[1];
-      if (speedCmd < 49  || speedCmd > 57) return;  // invalid format, not a number between 1 and 9
-      speedCmd = (speedCmd - 48) * MIN_FORWARD_SPEED;
-    }
-    else speedCmd = 0;  // speed not specified, so we will just increase or decrease by DELTA
-    
+    numSteps = strlen( (const char* ) msgSkype.data);
+    if ( numSteps > 5 ) return;  // invalid format, more than 4 characters
+    for (int i = 1; i < numSteps; i++) if ( (msgSkype.data[i] != msgSkype.data[0]) || msgSkype.data[i] != msgSkype.data[0] + 32 ) return; 
+          // if string is not all identical characters, allowing for first character to be a capital, return    
+    char cmd = msgSkype.data[0];  
     switch(cmd)
     {
       case 's':    // stop
+        ReceivedCommands.data = "command issued to slowly stop";
+        robot_commands.publish(&ReceivedCommands);
         slowStop();
         break;
         
       case 'S':    // stop
+        ReceivedCommands.data = "command issued to slowly stop";
+        robot_commands.publish(&ReceivedCommands);
         slowStop();
         break;
         
       case 'q':    // stop
         stop();
+        ReceivedCommands.data = "command issued to stop";
+        robot_commands.publish(&ReceivedCommands);
         break;
         
       case 'Q':    // stop
         stop();
+        ReceivedCommands.data = "command issued to stop";
+        robot_commands.publish(&ReceivedCommands);
         break;
       
       case 'f':  // move forward
-        if (speedCmd == 0) moveForwardNow();
-        else moveCommandedSpeed();
+        ReceivedCommands.data = "command issued to move forward";
+        robot_commands.publish(&ReceivedCommands);
+        driving = DRIVING_FORWARD;
+        moveForward();
         break;
         
       case 'F':  // move forward
-        if (speedCmd == 0) moveForwardNow();
-        else moveCommandedSpeed();
+        ReceivedCommands.data = "command issued to move forward";
+        robot_commands.publish(&ReceivedCommands);
+        driving = DRIVING_FORWARD;
+        moveForward();
         break;
         
       case 'b':  //move backward
-        if (speedCmd == 0) moveBackwardNow();
-        else 
-        {
-          speedCmd *= -1;
-          moveCommandedSpeed();
-        }
+        ReceivedCommands.data = "command issued to move backward";
+        robot_commands.publish(&ReceivedCommands);
+        driving = DRIVING_BACKWARD;
+        moveBackward();
         break;
         
       case 'B':  //move backward
-        if (speedCmd == 0) moveBackwardNow();
-        else 
-        {
-          speedCmd *= -1;
-          moveCommandedSpeed();
-        }
+        ReceivedCommands.data = "command issued to move backward";
+        robot_commands.publish(&ReceivedCommands);
+        driving = DRIVING_BACKWARD;
+        moveBackward();
         break;
         
       case 'r':  //turn right
-        if (speedCmd == 0) turnRightNow();
-        else turnCommandedSpeed();
+        driving = DRIVING_TURNRIGHT;
+        ReceivedCommands.data = "command issued to turn right";
+        robot_commands.publish(&ReceivedCommands);
+        turn();
         break;
         
       case 'R':  //turn right
-        if (speedCmd == 0) turnRightNow();
-        else turnCommandedSpeed();
+        driving = DRIVING_TURNRIGHT;
+        ReceivedCommands.data = "command issued to turn right";
+        robot_commands.publish(&ReceivedCommands);
+        turn();
         break;
         
       case 'l':  // turn left
-        if (speedCmd == 0) turnLeftNow();
-        else 
-        {
-          speedCmd *= -1;
-          turnCommandedSpeed();
-        }
+        driving = DRIVING_TURNLEFT;
+        ReceivedCommands.data = "command issued to turn left";
+        robot_commands.publish(&ReceivedCommands);
+        turn();
         break;
         
       case 'L':  // turn left
-        if (speedCmd == 0) turnLeftNow();
-        else 
-        {
-          speedCmd *= -1;
-          turnCommandedSpeed();
-        }
+        driving = DRIVING_TURNLEFT;
+        ReceivedCommands.data = "command issued to turn left";
+        robot_commands.publish(&ReceivedCommands);
+        turn();
         break;
       
       default:  // unknown command
@@ -246,7 +247,7 @@ void powerOnCreate()
             pinMode(powerIndicatorPin, LOW);
             delay(2000); // takes a couple seconds to be ready to drive
             myBase.start();
-            myBase.safeMode();
+            myBase.fullMode();
             pinMode(powerIndicatorPin, HIGH);           
         }  
 */
@@ -268,8 +269,7 @@ void powerOffCreate()  // power the Create off
         lastCmdMs = millis();  // remember when the command was done
   driving = DRIVING_NONE;
   baseTurnSpeed = 0;
-  baseFwdSpeed = 0;
-  speedCmd = 0;
+  baseStraightSpeed = 0;
   lastCmdMs = millis();
 }
 
@@ -282,265 +282,89 @@ void emergencyShutdown()
 
 void moveForward()
 {
-  powerOnCreate();  // if the create is not powered on, turn it on.
-  if (baseFwdSpeed == 0) // if starting from a stop, begin with default speed
+  lastCmdMs = millis();  // prevents a timeout in loop()
+  if (numSteps == 1)     // just get it done
   {
-    while (baseFwdSpeed < DEFAULT_FORWARD_SPEED)  // ramp up to speed from a stop
+    myBase.drive(DEFAULT_FORWARD_SPEED, myBase.DriveStraight);
+    delay(MIN_MOVE_TIME);
+    stop();
+  }
+  else  // use ramp up and ramp down
+  {
+    myBase.drive(MIN_FORWARD_SPEED, myBase.DriveStraight);
+    baseStraightSpeed = MIN_FORWARD_SPEED;
+    while (baseStraightSpeed < DEFAULT_FORWARD_SPEED)  // ramp up to speed from a stop
     {
-      baseFwdSpeed += DELTA_FORWARD_SPEED;
-      myBase.drive(baseFwdSpeed, myBase.DriveStraight);
+        baseStraightSpeed += DELTA_FORWARD_SPEED;
+        myBase.drive(baseStraightSpeed, myBase.DriveStraight);
+        delay(RAMPUP_SPEED_DELAY);
+    }
+    for (int i = 1; i < numSteps; i++)
+    {
+      baseStraightSpeed += DELTA_FORWARD_SPEED;
+      if (baseStraightSpeed <= MAX_FORWARD_SPEED) myBase.drive(baseStraightSpeed, myBase.DriveStraight);
       delay(RAMPUP_SPEED_DELAY);
     }
-    driving = DRIVING_FORWARD;
+    delay(MIN_MOVE_TIME * ( (3 * numSteps) - 6 ));  // numSteps here can range from 2 to 5, so we can get 0, 3MMT, 6MMT, and 9MMT 
+    slowStop();
   }
-  else
-  {  
-    if (driving == DRIVING_BACKWARD && baseFwdSpeed + DELTA_FORWARD_SPEED > MIN_BACKWARD_SPEED) stop();  // if we are slowing down and get real slow, stop.
-    else  // we are either moving forward or we are moving backward with sufficient speed to be OK to slow down without stopping
-    {
-      if (baseFwdSpeed <= MAX_FORWARD_SPEED - DELTA_FORWARD_SPEED) baseFwdSpeed += DELTA_FORWARD_SPEED;  // moving foward or slowing down backward means adding DELTA_FORWARD_SPEED
-      myBase.drive(baseFwdSpeed, myBase.DriveStraight);
-      if (baseFwdSpeed > 0) driving = DRIVING_FORWARD;
-      else driving = DRIVING_BACKWARD;
-    }
-  }
-  baseTurnSpeed = 0;
-  ReceivedCommands.data = "command issued to move more forward";
-  robot_commands.publish(&ReceivedCommands);
-  lastCmdMs = millis();  // remember when the command was done
 }
 
 void moveBackward()
 {
-  powerOnCreate();
-  if (baseFwdSpeed == 0) // if starting from a stop, begin with default speed
+  lastCmdMs = millis();  // prevents a timeout in loop()
+  if (numSteps == 1) 
   {
-   while (baseFwdSpeed > DEFAULT_BACKWARD_SPEED)  // ramp up to speed from a stop
-    {
-      baseFwdSpeed -= DELTA_FORWARD_SPEED;
-      myBase.drive(baseFwdSpeed, myBase.DriveStraight);
-      delay(RAMPUP_SPEED_DELAY);
-    }
-    
-    baseFwdSpeed = DEFAULT_BACKWARD_SPEED;
-    //myBase.drive(baseFwdSpeed, myBase.DriveStraight);
-    driving = DRIVING_BACKWARD;
-  }
-  else 
-  {
-    if (driving == DRIVING_FORWARD && baseFwdSpeed - DELTA_FORWARD_SPEED < MIN_FORWARD_SPEED) stop();  // if we are slowing down and get real slow, stop.
-    else
-    {
-      if (baseFwdSpeed >= MAX_BACKWARD_SPEED + DELTA_FORWARD_SPEED) baseFwdSpeed -= DELTA_FORWARD_SPEED;
-      myBase.drive(baseFwdSpeed, myBase.DriveStraight);
-      if (baseFwdSpeed < 0) driving = DRIVING_BACKWARD;
-      else driving = DRIVING_FORWARD;
-    }
-  }
-  baseTurnSpeed = 0;
-  ReceivedCommands.data = "command issued to move more backward";
-  robot_commands.publish(&ReceivedCommands);
-  lastCmdMs = millis();  // remember when the command was done
-}
-
-void moveCommandedSpeed()
-{
-    powerOnCreate();
-    if (speedCmd > baseFwdSpeed) 
-    {
-      while (speedCmd > baseFwdSpeed)
-      {
-        baseFwdSpeed += DELTA_FORWARD_SPEED;
-        myBase.drive(baseFwdSpeed, myBase.DriveStraight);
-        delay(RAMPUP_SPEED_DELAY);
-      }
-    }
-    else
-    {
-      while (speedCmd < baseFwdSpeed)
-      {
-        baseFwdSpeed -= DELTA_FORWARD_SPEED;
-        myBase.drive(baseFwdSpeed, myBase.DriveStraight);
-        delay(RAMPUP_SPEED_DELAY);
-      }
-    }
-    
-    if (baseFwdSpeed > 0)
-    {
-       driving = DRIVING_FORWARD;
-       ReceivedCommands.data = "command issued to move forward";
-    }     
-    else
-    {
-      driving = DRIVING_BACKWARD;
-      ReceivedCommands.data = "command issued to move backward";
-    }
-    robot_commands.publish(&ReceivedCommands);
-    baseTurnSpeed = 0;
-    lastCmdMs = millis();  // remember when the command was done
-}
-
-void turnRight()
-{
-  powerOnCreate();
-  if (baseTurnSpeed == 0) // if starting from a stop, begin with default speed
-  {
-    while (baseTurnSpeed < DEFAULT_TURN_SPEED)  // ramp up to speed from a stop
-    {
-      baseTurnSpeed += DELTA_TURN_SPEED;
-      myBase.drive(baseTurnSpeed, myBase.DriveInPlaceClockwise); 
-      delay(RAMPUP_SPEED_DELAY);
-    }
-    driving = DRIVING_TURNRIGHT;  
+    myBase.drive(DEFAULT_BACKWARD_SPEED, myBase.DriveStraight);
+    delay(MIN_MOVE_TIME);
+    stop();
   }
   else
   {
-    if (driving == DRIVING_TURNLEFT && baseTurnSpeed - DELTA_TURN_SPEED < MIN_TURN_SPEED) stop();  // if we are slowing down and get real slow, stop
-    else
+    myBase.drive(MIN_BACKWARD_SPEED, myBase.DriveStraight);
+    baseStraightSpeed = MIN_BACKWARD_SPEED;
+    while (baseStraightSpeed > DEFAULT_BACKWARD_SPEED)  // ramp up to speed from a stop, note that these are negative numbers
     {
-      if (driving == DRIVING_TURNLEFT)
-      {
-        baseTurnSpeed -= DELTA_TURN_SPEED;  // got a turn right command while turning left, means slow down the turn, but still turn left
-        myBase.drive(baseTurnSpeed, myBase.DriveInPlaceCounterClockwise); 
-      }
-      else
-      {
-        if (baseTurnSpeed <= MAX_TURN_SPEED - DELTA_TURN_SPEED) baseTurnSpeed += DELTA_TURN_SPEED;  // got a turn right command while turning right, means speed up the turn
-        myBase.drive(baseTurnSpeed, myBase.DriveInPlaceClockwise); 
-      }
+        baseStraightSpeed += DELTA_BACKWARD_SPEED;
+        myBase.drive(baseStraightSpeed, myBase.DriveStraight);
+        delay(RAMPUP_SPEED_DELAY);
     }
-  } 
-  baseFwdSpeed = 0;
-  ReceivedCommands.data = "command issued to move more right";
-  robot_commands.publish(&ReceivedCommands);
-  lastCmdMs = millis();  // remember when the command was done
-}
-
-void moveForwardNow()
-{
-  lastCmdMs = millis();  // remember when the command was done
-  myBase.drive(DEFAULT_FORWARD_SPEED, myBase.DriveStraight);
-  delay(MOVE_TIME);
-  slowStop();
-  driving = DRIVING_NONE;
-}
-
-void moveBackwardNow()
-{
-  lastCmdMs = millis();  // remember when the command was done
-  myBase.drive(DEFAULT_BACKWARD_SPEED, myBase.DriveStraight);
-  delay(MOVE_TIME);
-  myBase.drive(0, myBase.DriveStraight);
-  driving = DRIVING_NONE;
-}
-
-void turnRightNow()
-{
-  lastCmdMs = millis();  // remember when the command was done
-  myBase.drive(DEFAULT_TURN_SPEED, myBase.DriveInPlaceClockwise);
-  delay(TURN_TIME);
-  myBase.drive(0, myBase.DriveInPlaceCounterClockwise);
-  driving = DRIVING_NONE;
-}
-
-void turnLeftNow()
-{
-  lastCmdMs = millis();  // remember when the command was done
-  myBase.drive(DEFAULT_TURN_SPEED, myBase.DriveInPlaceCounterClockwise);
-  delay(TURN_TIME);
-  myBase.drive(0, myBase.DriveInPlaceCounterClockwise);
-  driving = DRIVING_NONE;
-}
-
-  
-void turnLeft()
-{
-  powerOnCreate();
-  if (baseTurnSpeed == 0) // if starting from a stop, begin with default speed
-  {
-    while (baseTurnSpeed < DEFAULT_TURN_SPEED)  // ramp up to speed from a stop
+    for (int i = 1; i < numSteps; i++)
     {
-      baseTurnSpeed += DELTA_TURN_SPEED;
-      myBase.drive(baseTurnSpeed, myBase.DriveInPlaceCounterClockwise); 
+      baseStraightSpeed += DELTA_BACKWARD_SPEED;
+      if (baseStraightSpeed >= MAX_BACKWARD_SPEED) myBase.drive(baseStraightSpeed, myBase.DriveStraight);
       delay(RAMPUP_SPEED_DELAY);
     }
-    driving = DRIVING_TURNLEFT;  
+    delay(MIN_MOVE_TIME * ( (3 * numSteps) - 6 ));  // numSteps here can range from 2 to 5, so we can get 0, 3MMT, 6MMT, and 9MMT 
+    slowStop();
   }
-  else
-  {
-    if (driving == DRIVING_TURNRIGHT && baseTurnSpeed - DELTA_TURN_SPEED < MIN_TURN_SPEED) stop();  // if we are slowing down and get real slow, stop
-    else
-    {
-      if (driving == DRIVING_TURNRIGHT)
-      {
-        baseTurnSpeed -= DELTA_TURN_SPEED;  // got a turn left command while turning right, means slow down the turn, but still turn right
-        myBase.drive(baseTurnSpeed, myBase.DriveInPlaceClockwise); 
-      }
-      else
-      {
-        if (baseTurnSpeed <= MAX_TURN_SPEED - DELTA_TURN_SPEED) baseTurnSpeed += DELTA_TURN_SPEED;  // got a turn left command while turning left, means speed up the turn
-        myBase.drive(baseTurnSpeed, myBase.DriveInPlaceCounterClockwise); 
-      }
-    }
-  } 
-  baseFwdSpeed = 0;
-  ReceivedCommands.data = "command issued to move more left";
-  robot_commands.publish(&ReceivedCommands);
-  lastCmdMs = millis();  // remember when the command was done
 }
 
-void turnCommandedSpeed()
+void turn()
 {
-    powerOnCreate();
-    bool turnRight = true;
-    driving = DRIVING_TURNRIGHT;
-    if (speedCmd < 0)    // a negative speedCmd means to turn left
-    {
-      turnRight = false;
-      speedCmd *= -1;
-      driving = DRIVING_TURNLEFT;
-    }
-    if (speedCmd > baseTurnSpeed) 
-    {
-      while (speedCmd > baseTurnSpeed)  // if we are changing direction of the turn, then this will happen without a rampup, but that is OK, since it suggests a need to turn fast.
-      {
-        baseTurnSpeed += DELTA_TURN_SPEED;
-        if (turnRight) myBase.drive(baseTurnSpeed, myBase.DriveInPlaceClockwise); 
-        else myBase.drive(baseTurnSpeed, myBase.DriveInPlaceCounterClockwise); 
-        delay(RAMPUP_SPEED_DELAY);
-      }
-    }
-    else
-    {
-      while (speedCmd < baseTurnSpeed)
-      {
-        baseTurnSpeed -= DELTA_TURN_SPEED;
-        if (turnRight) myBase.drive(baseTurnSpeed, myBase.DriveInPlaceClockwise); 
-        else myBase.drive(baseTurnSpeed, myBase.DriveInPlaceCounterClockwise); 
-        delay(RAMPUP_SPEED_DELAY);
-      }
-    }
-    baseFwdSpeed = 0;
-    ReceivedCommands.data = "command issued to turn";
-    robot_commands.publish(&ReceivedCommands);
-    lastCmdMs = millis();  // remember when the command was done
-}
+  lastCmdMs = millis();  // prevents a timeout in loop()
+  if (driving == DRIVING_TURNRIGHT) myBase.drive(DEFAULT_TURN_SPEED, myBase.DriveInPlaceClockwise);
+  else myBase.drive(DEFAULT_TURN_SPEED, myBase.DriveInPlaceCounterClockwise);
+  delay(MIN_TURN_TIME * ( (4 * numSteps) - 3 ));  // numSteps here can range from 1 to 5, so we can get 1, 5MMT, 9MMT, 13MMT, and 17MT numSteps);
+  stop();
+ }
+
 
 void slowStop()
 {
   powerOnCreate();
   if (driving < 3) // not turning
   {
-    while (baseFwdSpeed > MIN_FORWARD_SPEED) 
+    while (baseStraightSpeed > MIN_FORWARD_SPEED) 
     {
-        baseFwdSpeed -= DELTA_FORWARD_SPEED;
-        myBase.drive(baseFwdSpeed, myBase.DriveStraight);
+        baseStraightSpeed -= DELTA_FORWARD_SPEED;
+        myBase.drive(baseStraightSpeed, myBase.DriveStraight);
         delay(RAMPUP_SPEED_DELAY);
     }
-    while (baseFwdSpeed < MIN_BACKWARD_SPEED)
+    while (baseStraightSpeed < MIN_BACKWARD_SPEED)  // negative numbers here
     {
-        baseFwdSpeed += DELTA_FORWARD_SPEED;
-        myBase.drive(baseFwdSpeed, myBase.DriveStraight);
+        baseStraightSpeed -= DELTA_BACKWARD_SPEED;
+        myBase.drive(baseStraightSpeed, myBase.DriveStraight);
         delay(RAMPUP_SPEED_DELAY);
     }
   }
@@ -555,16 +379,14 @@ void slowStop()
   }
   stop();
 }
+
 void stop()
 {
   powerOnCreate();
   myBase.drive(0, myBase.DriveStraight);
   driving = DRIVING_NONE;
   baseTurnSpeed = 0;
-  baseFwdSpeed = 0;
-  speedCmd = 0;
-  ReceivedCommands.data = "command issued to stop";
-  robot_commands.publish(&ReceivedCommands);
+  baseStraightSpeed = 0;
   lastCmdMs = millis();
 }
   
@@ -615,7 +437,7 @@ void getSensorData()
     RobotStateMsg.batteryCapacity = sensors.batteryCapacity;
     
     RobotStateMsg.drivingMode = driving;
-    RobotStateMsg.FwdCommandSpeed = baseFwdSpeed;
+    RobotStateMsg.FwdCommandSpeed = baseStraightSpeed;
     RobotStateMsg.TurnCommandSpeed = baseTurnSpeed;
     RobotStateMsg.SecondsSinceLastCommand = deltaT;
     RobotStateMsg.PowerBoxOn = powerMonitor;
@@ -626,37 +448,29 @@ void getSensorData()
 
 void goForStroll()
 {
-   moveForward();
-   delay(400);
-   slowStop();
-   delay(100);
-   turnRight();
-   delay(300);
-   slowStop();
-   delay(100);
-   turnLeft();
-   delay(300);
-   slowStop();
-   delay(100);
-   moveBackward();
-   slowStop(); 
-   /*
-   delay(100);
-   speedCmd = 300;
-   turnCommandedSpeed();
-   delay(300);
-   stop();
-   delay(100);
-   speedCmd = -300;
-   turnCommandedSpeed();
-   delay(300);
-   stop();
-   delay(100);
-   speedCmd = -300;
-   moveCommandedSpeed();
-   delay(500);
-   stop(); 
-   */
+  numSteps = 2;
+  ReceivedCommands.data = "command issued to move forward";
+  robot_commands.publish(&ReceivedCommands);
+  driving = DRIVING_FORWARD;
+  moveForward();
+  delay(100);
+  
+  driving = DRIVING_TURNRIGHT;
+  ReceivedCommands.data = "command issued to turn right";
+  robot_commands.publish(&ReceivedCommands);
+  turn();
+  delay(100);
+   
+  driving = DRIVING_TURNLEFT;
+  ReceivedCommands.data = "command issued to turn left";
+  robot_commands.publish(&ReceivedCommands);
+  turn();
+  delay(100);
+   
+  ReceivedCommands.data = "command issued to move backward";
+  robot_commands.publish(&ReceivedCommands);
+  driving = DRIVING_BACKWARD;
+  moveBackward();
 }
 
 void setup() 
@@ -681,17 +495,6 @@ void setup()
   //nh.advertise(robot_state);
   nh.advertise(robot_commands);
   nh.subscribe(subscriberSkype);
-  
-  nh.advertise(chatter);
-  /*
-  while (!nh.connected())
-  {
-    myBase.leds(0x02,255,128);  // visual indicator that we are stuck
-    delay(300);
-    myBase.leds(0x00,255,0);  // visual indicator that we are stuck
-    delay(300);
-  }
-  */
 
   stop();   
   counter = 0; 
@@ -699,7 +502,7 @@ void setup()
 
 void loop() 
 {   
-  myBase.leds(0x02,0,32);  // visual indicator that we are at the top of the loop, all is well
+  myBase.leds(0x02,0,32);  // visual indicator that we are at the top of the loop
   if ((millis() > lastCmdMs + TIME_OUT) && (driving != DRIVING_NONE) ) stop();
   
   //if (millis() > lastCmdMs + TURN_OFF_CREATE) powerOffCreate();
@@ -711,23 +514,6 @@ void loop()
   //counter++;
 
   //myBase.leds(0x08,255,32);  // visual indicator that we are stuck inside the loop
- // str_msg.data = hello;
-  //chatter.publish( &str_msg );
-  
-  /*
-  if (nh.connected()) nh.spinOnce();  // spinOnce() is a blocking call if comm is lost to ROS
-  else
-  {
-    stop();
-    while (!nh.connected())
-    {
-      myBase.leds(0x02,255,128);  // visual indicator that we are stuck
-      delay(300);
-      myBase.leds(0x00,255,0);  // visual indicator that we are stuck
-      delay(300);
-    }
-  }
-  */
   
   nh.spinOnce();
   delay(500);
