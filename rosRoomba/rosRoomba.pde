@@ -134,7 +134,7 @@ void skypeCallback( const std_msgs::String& msgSkype)
     robot_commands.publish(&ReceivedCommands);
     numSteps = strlen( (const char* ) msgSkype.data);
     if ( numSteps > 5 ) return;  // invalid format, more than 4 characters
-    for (int i = 1; i < numSteps; i++) if ( (msgSkype.data[i] != msgSkype.data[0]) || msgSkype.data[i] != msgSkype.data[0] + 32 ) return; 
+    for (int i = 1; i < numSteps; i++) if ( (msgSkype.data[i] != msgSkype.data[0]) && msgSkype.data[i] != msgSkype.data[0] + 32 ) return; 
           // if string is not all identical characters, allowing for first character to be a capital, return    
     char cmd = msgSkype.data[0];  
     switch(cmd)
