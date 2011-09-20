@@ -3,6 +3,7 @@
 
 // Requires Roomba, ROS library folders, and rosRoomba folder with header file, to be located in sketchbook/libraries
 
+#include <Servo.h>
 #include <Roomba.h>
 #include <ros.h>
 #include <rosRoomba/rosRoomba.h>
@@ -75,6 +76,16 @@ the middle green light on, and the colored one to green, half intensity
 #define TIME_OUT 8000  // number of milliseconds to wait for command before you consider it a timeout and stop the base
 #define TURN_OFF_CREATE 900000  // number of milliseconds of inactivity before powering down create to save battery power (15 min = 900 seconds = 900000 msec)
 
+#define MIN_PAN 10
+#define MAX_PAN 140
+#define CENTER_PAN 75
+#define DELTA_PAN 10
+
+#define MIN_TILT 40
+#define MAX_TILT 130
+#define CENTER_TILT 85
+#define DELTA_TILT 10
+
 #define PUBLISH_RATE 100  // only publish once every PUBLISH_RATE times through the main loop
 
 typedef struct 
@@ -105,7 +116,7 @@ sensorData726 sensors;
 
 
 Roomba myBase(&Serial2); // instance for the Create on Serial2 (pins 16 and 17)
-
+Servo panServo, tiltServo;  // create servo objects
 ros::NodeHandle  nh;
   
 std_msgs::String ReceivedCommands;
@@ -127,6 +138,7 @@ int baseStraightSpeed, baseTurnSpeed;
 int counter;  // inside the loop we will only publish once every PUBLISH_RATE cycles
 int emergencyShutdownReceived = 0;
 int numSteps; // number of incremental movements to do
+int tiltPosition, panPosition;
 
 void skypeCallback( const std_msgs::String& msgSkype)
 {
@@ -139,85 +151,142 @@ void skypeCallback( const std_msgs::String& msgSkype)
     char cmd = msgSkype.data[0];  
     switch(cmd)
     {
-      case 's':    // stop
+      case 'z':    // stop
         ReceivedCommands.data = "command issued to slowly stop";
         robot_commands.publish(&ReceivedCommands);
         slowStop();
         break;
         
-      case 'S':    // stop
+      case 'Z':    // stop
         ReceivedCommands.data = "command issued to slowly stop";
         robot_commands.publish(&ReceivedCommands);
         slowStop();
         break;
         
-      case 'q':    // stop
+      case 'x':    // stop
         stop();
         ReceivedCommands.data = "command issued to stop";
         robot_commands.publish(&ReceivedCommands);
         break;
         
-      case 'Q':    // stop
+      case 'X':    // stop
         stop();
         ReceivedCommands.data = "command issued to stop";
         robot_commands.publish(&ReceivedCommands);
         break;
       
-      case 'f':  // move forward
+      case 'w':  // move forward
         ReceivedCommands.data = "command issued to move forward";
         robot_commands.publish(&ReceivedCommands);
         driving = DRIVING_FORWARD;
         moveForward();
         break;
         
-      case 'F':  // move forward
+      case 'W':  // move forward
         ReceivedCommands.data = "command issued to move forward";
         robot_commands.publish(&ReceivedCommands);
         driving = DRIVING_FORWARD;
         moveForward();
         break;
         
-      case 'b':  //move backward
+      case 's':  //move backward
         ReceivedCommands.data = "command issued to move backward";
         robot_commands.publish(&ReceivedCommands);
         driving = DRIVING_BACKWARD;
         moveBackward();
         break;
         
-      case 'B':  //move backward
+      case 'S':  //move backward
         ReceivedCommands.data = "command issued to move backward";
         robot_commands.publish(&ReceivedCommands);
         driving = DRIVING_BACKWARD;
         moveBackward();
         break;
         
-      case 'r':  //turn right
+      case 'd':  //turn right
         driving = DRIVING_TURNRIGHT;
         ReceivedCommands.data = "command issued to turn right";
         robot_commands.publish(&ReceivedCommands);
         turn();
         break;
         
-      case 'R':  //turn right
+      case 'D':  //turn right
         driving = DRIVING_TURNRIGHT;
         ReceivedCommands.data = "command issued to turn right";
         robot_commands.publish(&ReceivedCommands);
         turn();
         break;
         
-      case 'l':  // turn left
+      case 'a':  // turn left
         driving = DRIVING_TURNLEFT;
         ReceivedCommands.data = "command issued to turn left";
         robot_commands.publish(&ReceivedCommands);
         turn();
         break;
         
-      case 'L':  // turn left
+      case 'A':  // turn left
         driving = DRIVING_TURNLEFT;
         ReceivedCommands.data = "command issued to turn left";
         robot_commands.publish(&ReceivedCommands);
         turn();
         break;
+        
+     case 'u':  // tilt up
+        tiltServoUp();
+        break;
+
+     case 'U': // tilt up
+        tiltServoUp();
+        break;  
+  
+      case 'n':  // tilt down
+        tiltServoDown();
+        break;
+
+      case 'N':  // tilt down
+        tiltServoDown();
+        break; 
+   
+      case 'k': // pan right
+        panServoRight();
+        break;
+     
+      case 'K': // pan right
+        panServoRight();
+        break; 
+ 
+      case 'h': // pan left
+        panServoLeft();
+        break;
+        
+      case 'H': // pan left
+        panServoLeft();
+        break; 
+        
+      case 'j': //center servos
+        centerServos();
+        break;
+  
+      case 'J': //center servos
+        centerServos();
+        break;
+  
+      case 'c':  // center servos
+        centerServos();
+        break;
+   
+      case 'C':  // center servos
+        centerServos();
+        break;  
+  
+      case 'm':  //max down tilt servo  
+        maxDownServoTilt();
+        break;
+    
+      case 'M':  //max down tilt servo  
+        maxDownServoTilt();
+        break;       
+     
       
       default:  // unknown command
         //stop();  w// we need to ignore, not stop because otherwise we will stop when people are just saying stuff like "hi"
@@ -336,6 +405,7 @@ void moveBackward()
       delay(RAMPUP_SPEED_DELAY);
     }
     delay(MIN_MOVE_TIME * ( (3 * numSteps) - 6 ));  // numSteps here can range from 2 to 5, so we can get 0, 3MMT, 6MMT, and 9MMT 
+    if (numSteps > 3) delay(1000);  // for longer runs, add some extra time
     slowStop();
   }
 }
@@ -345,7 +415,9 @@ void turn()
   lastCmdMs = millis();  // prevents a timeout in loop()
   if (driving == DRIVING_TURNRIGHT) myBase.drive(DEFAULT_TURN_SPEED, myBase.DriveInPlaceClockwise);
   else myBase.drive(DEFAULT_TURN_SPEED, myBase.DriveInPlaceCounterClockwise);
-  delay(MIN_TURN_TIME * ( (4 * numSteps) - 3 ));  // numSteps here can range from 1 to 5, so we can get 1, 5MMT, 9MMT, 13MMT, and 17MT numSteps);
+  delay(MIN_TURN_TIME * numSteps);  // numSteps here can range from 1 to 5, so we can get 1, 3MMT, 9MMT, 13MMT, and 17MT numSteps);
+  if (numSteps > 3) delay(500);  // for longer runs, add some extra time
+  
   stop();
  }
 
@@ -389,7 +461,50 @@ void stop()
   baseStraightSpeed = 0;
   lastCmdMs = millis();
 }
-  
+ 
+void panServoRight()
+{
+  panPosition += DELTA_PAN * numSteps;
+  if (panPosition > MAX_PAN) panPosition = MAX_PAN;
+  panServo.write(panPosition); 
+}
+
+void panServoLeft()
+{
+  panPosition -= DELTA_PAN * numSteps;
+  if (panPosition < MIN_PAN) panPosition = MIN_PAN;
+  panServo.write(panPosition); 
+}
+
+void tiltServoUp()
+{
+  tiltPosition -= DELTA_TILT * numSteps;
+  if (tiltPosition < MIN_TILT) tiltPosition = MIN_TILT;
+  tiltServo.write(tiltPosition); 
+}
+
+void tiltServoDown()
+{
+  tiltPosition += DELTA_TILT * numSteps;
+  if (tiltPosition > MAX_TILT) tiltPosition = MAX_TILT;
+  tiltServo.write(tiltPosition); 
+}
+
+void centerServos()
+{
+  panPosition = CENTER_PAN;
+  panServo.write(panPosition);
+  delay(300);
+  tiltPosition = CENTER_TILT;
+  tiltServo.write(tiltPosition);
+}
+
+void maxDownServoTilt()
+{
+  tiltPosition = MAX_TILT;
+  tiltServo.write(tiltPosition);
+}
+ 
 bool checkConnectionToRoomba()
 {
   uint8_t buf[2];
@@ -478,6 +593,11 @@ void setup()
   pinMode(powerPin, OUTPUT); // toggle DD to toggle power on the Create
   pinMode(powerMonitor, INPUT); // high if power from Create via power board (and power board's switch) is on
   pinMode(powerIndicatorPin, OUTPUT); // output to drive an LED that the user can see.
+  
+  panServo.attach(5);  // attaches the servos to pins 5 and 7
+  tiltServo.attach(7); 
+  
+  centerServos();
   
   myBase.start();
   myBase.fullMode();

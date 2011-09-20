@@ -72,11 +72,7 @@ class SkypeAPI(object):
 
 	def read(self, event):
 		"""Receive an event"""
-		try:
-			d = event.data[1]
-		except:
-			print "Error in data parsing, skipping."
-			return None
+		d = event.data[1]
 		pos = d.find("\x00")
 		if pos < 0:
 			pos = len(d)
