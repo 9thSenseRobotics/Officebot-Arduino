@@ -20,6 +20,9 @@ import sys
 import os
 import re
 import datetime
+import popen2
+import subprocess
+import signal
 from optparse import OptionParser
 
 from skype_api import *
@@ -38,6 +41,9 @@ body = {}
 
 callId = ''
 lastCam = True
+gstProcId = 0
+
+camProc = subprocess.Popen ("/usr/bin/gst-launch-0.10 -v v4l2src device=/dev/video2 ! v4l2sink device=/dev/video3", shell=True);
 
 pub = rospy.Publisher('SkypeChat', String)
 
@@ -55,6 +61,8 @@ def edited_onchange(event, api):
 
 	global callId
 	global lastCam
+	global gstProcId
+	global camProc
 	
 	# check for a new call so we can grab it's ID
 	# Strings look like: Received: CALL 79 STATUS INPROGRESS
@@ -103,17 +111,24 @@ def edited_onchange(event, api):
 			print 'SWITCH CAMERAS'
 			print callId
 			
-			# create a symlink in /dev for the camera (our fake cam is on video9)
-			if (lastCam == True):
-				os.system('sudo ln -s -f /dev/video2 /dev/video9')
-				lastCam = False
-			else:
-				os.system('sudo ln -s -f /dev/video0 /dev/video9')
-				lastCam = True
-			
 			# stop skype video
 			ret = api.send_and_block('ALTER CALL ' + str(callId) + ' STOP_VIDEO_SEND')
-			
+
+			# create a symlink in /dev for the camera (our fake cam is on video9)
+			if (lastCam == True):
+				print 'killing ' + str(camProc.pid)
+				subprocess.Popen.terminate(camProc)
+				os.system('killall -9 gst-launch-0.10');
+				camProc = subprocess.Popen ("/usr/bin/gst-launch-0.10 -v v4l2src device=/dev/video2 ! videoscale ! v4l2sink device=/dev/video3", shell=True);
+				lastCam = False
+			else:
+				print 'killing ' + str(camProc.pid)
+				subprocess.Popen.terminate(camProc)
+				os.system('killall -9 gst-launch-0.10');
+				camProc = subprocess.Popen ("/usr/bin/gst-launch-0.10 -v v4l2src device=/dev/video1 ! videoscale ! v4l2sink device=/dev/video3", shell=True);
+				gstProcId = camProc.pid
+				lastCam = True
+						
 			# restart skype video
 			ret = api.send_and_block('ALTER CALL ' + str(callId) + ' START_VIDEO_SEND')
 		
