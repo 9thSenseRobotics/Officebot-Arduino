@@ -83,7 +83,7 @@ the middle green light on, and the colored one to green, half intensity
 
 #define MIN_TILT 40
 #define MAX_TILT 130
-#define CENTER_TILT 85
+#define CENTER_TILT 40
 #define DELTA_TILT 10
 
 #define PUBLISH_RATE 100  // only publish once every PUBLISH_RATE times through the main loop
