@@ -44,8 +44,8 @@ lastCam = True
 
 pub = rospy.Publisher('SkypeChat', String)
 
-video0 = subprocess.Popen ('gst-launch-0.10', "v4l2src device=/dev/video1 ! ffmpegcolorspace ! videoscale ! v4l2sink device=/dev/video2", bufsize=0, shell=False)
-video1 = subprocess.Popen ('gst-launch-0.10', "v4l2src device=/dev/video1 ! ffmpegcolorspace ! videoscale ! video/x-raw-yuv,width=640,height=480,framerate=15/1,format='(fourcc)'YUY2 ! v4l2sink device=/dev/video2", bufsize=0, shell=False)
+video0 = subprocess.Popen (["gst-launch-0.10", "v4l2src", "device=/dev/video0", "!", "ffmpegcolorspace", "!", "videoscale", "!", "v4l2sink", "device=/dev/video2"])
+video1 = subprocess.Popen (["gst-launch-0.10", "v4l2src", "device=/dev/video1", "!", "ffmpegcolorspace", "!", "videoscale", "!", "v4l2sink", "device=/dev/video2"])
 
 print 'Waiting for gstreamer processes to start' 
 time.sleep(5)
@@ -116,6 +116,9 @@ def edited_onchange(event, api):
 		if (messageBody.find('cam') >= 0 or messageBody.find('camera') >= 0):
 			print 'SWITCH CAMERAS'
 			print callId
+
+			# stop skype video
+			ret = api.send_and_block('ALTER CALL ' + str(callId) + ' STOP_VIDEO_SEND')
 			
 			# create a symlink in /dev for the camera (our fake cam is on video9)
 			if (lastCam == True):
@@ -130,8 +133,6 @@ def edited_onchange(event, api):
 				print 'LastCam is true - playing ' + str(video0.pid) + ' and pausing ' + str(video1.pid)
 				lastCam = True
 			
-			# stop skype video
-			ret = api.send_and_block('ALTER CALL ' + str(callId) + ' STOP_VIDEO_SEND')
 			
 			# restart skype video
 			ret = api.send_and_block('ALTER CALL ' + str(callId) + ' START_VIDEO_SEND')
