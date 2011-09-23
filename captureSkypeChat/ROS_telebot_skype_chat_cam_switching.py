@@ -20,6 +20,9 @@ import sys
 import os
 import re
 import datetime
+import subprocess
+import signal
+import time
 from optparse import OptionParser
 
 from skype_api import *
@@ -41,6 +44,15 @@ lastCam = True
 
 pub = rospy.Publisher('SkypeChat', String)
 
+video0 = subprocess.Popen ('gst-launch-0.10', "v4l2src device=/dev/video1 ! ffmpegcolorspace ! videoscale ! v4l2sink device=/dev/video2", bufsize=0, shell=False)
+video1 = subprocess.Popen ('gst-launch-0.10', "v4l2src device=/dev/video1 ! ffmpegcolorspace ! videoscale ! video/x-raw-yuv,width=640,height=480,framerate=15/1,format='(fourcc)'YUY2 ! v4l2sink device=/dev/video2", bufsize=0, shell=False)
+
+print 'Waiting for gstreamer processes to start' 
+time.sleep(5)
+
+os.kill(video1.pid, signal.SIGUSR1) # play
+os.kill(video0.pid, signal.SIGUSR2) # pause
+
 # ROS publisher
 #def SkypeListener():
 #    while not rospy.is_shutdown():
@@ -55,6 +67,8 @@ def edited_onchange(event, api):
 
 	global callId
 	global lastCam
+	global video0
+	global video1
 	
 	# check for a new call so we can grab it's ID
 	# Strings look like: Received: CALL 79 STATUS INPROGRESS
@@ -105,10 +119,15 @@ def edited_onchange(event, api):
 			
 			# create a symlink in /dev for the camera (our fake cam is on video9)
 			if (lastCam == True):
-				os.system('sudo ln -s -f /dev/video2 /dev/video9')
+				#os.system('sudo ln -s -f /dev/video2 /dev/video9')
+				os.kill(video1.pid, signal.SIGUSR1) # play
+				os.kill(video0.pid, signal.SIGUSR2) # pause
+				print 'LastCam is true - playing ' + str(video1.pid) + ' and pausing ' + str(video0.pid)
 				lastCam = False
 			else:
-				os.system('sudo ln -s -f /dev/video0 /dev/video9')
+				os.kill(video0.pid, signal.SIGUSR1) # play
+				os.kill(video1.pid, signal.SIGUSR2) # pause
+				print 'LastCam is true - playing ' + str(video0.pid) + ' and pausing ' + str(video1.pid)
 				lastCam = True
 			
 			# stop skype video
