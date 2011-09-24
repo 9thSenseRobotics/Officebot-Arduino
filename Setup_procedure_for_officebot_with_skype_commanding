@@ -11,21 +11,40 @@ substitute the upper camera device name for video1
 and enter the sudo password when that comes up.  sudo is needed for camera device switching,
 but it is just needed once per command window so it is OK
 
+ls /dev/vid*
+and make sure that /dev/video9 is there.
+
 power up the create
 start skype
+check that skype video options are set to use video9 and test that there is a good video feed coming through
+
+cd ~/cameraControl/src
+gedit main.cpp
+
+#define FIRST_VIDEO_DEVICE "/dev/video0"
+#define SECOND_VIDEO_DEVICE "/dev/video1"
+replace video 0 with the camera that is on top, video1 with the camera that is on the bottom
+save the file and recompile with 
+cd ..
+make
 
 cd ~/arduino_projects/captureSkypeChat
-gedit ROS_telebot_skype_chat_cam_switching.py
+gedit ROS_telebot_skype_chat_cam_switching_rev1.py
 
-go to lines 108 and 111
-os.system('sudo ln -s -f /dev/video2 /dev/video9')
+go to lines 108 and 111 and 148
 os.system('sudo ln -s -f /dev/video1 /dev/video9')
-replace video 1 with the camera that is on top, video2 with the camera that is on the bottom
+os.system('sudo ln -s -f /dev/video0 /dev/video9')
+os.system('sudo ln -s -f /dev/video0 /dev/video9')
+replace video 0 with the camera that is on top, video1 with the camera that is on the bottom
+save the file
+
 
 roscore
-rosrun captureSkypeChat ROS_telebot_skype_chat_cam_switching.py
+rosrun captureSkypeChat ROS_telebot_skype_chat_cam_switching_rev1.py
+You will have to enter the sudo password to allow it to switch cameras
 rosrun cameraControl cameraControl
-rosrun rosserial_python serial_node.py /dev/ttyACM0  note that ttyACM0 should correspond to the arduino
+rosrun rosserial_python serial_node.py /dev/ttyACM0
+note that ttyACM0 should correspond to the arduino
 
 should see:
 INFO] [WallTime: 1316148811.617215] ROS Serial Python Node
@@ -64,6 +83,7 @@ a single character gets you a fast, short response.
 multiple characters (e.g., aaa) gets you bigger responses and, in the case of moving forward or backward, a smooth acceleration and deceleration.
 The first character can be capitalized and the subsequent ones lowercase.
 Otherwise, use all uppercase or all lowercase.
+
 
 
 
