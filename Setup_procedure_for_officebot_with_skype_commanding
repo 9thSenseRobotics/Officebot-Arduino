@@ -1,0 +1,80 @@
+to run arduino skype stuff:
+
+check that the arduino connects as /dev/ttyACM0
+
+check the video devices that are connected and find out which ones they are.
+Be sure that this corresponds to what is specified in the code.
+Soon we will change these to parameters that are automatically set, but for now
+
+sudo ln -s -f /dev/video1 /dev/video9'
+substitute the upper camera device name for video1
+and enter the sudo password when that comes up.  sudo is needed for camera device switching,
+but it is just needed once per command window so it is OK
+
+power up the create
+start skype
+
+cd ~/arduino_projects/captureSkypeChat
+gedit ROS_telebot_skype_chat_cam_switching.py
+
+go to lines 108 and 111
+os.system('sudo ln -s -f /dev/video2 /dev/video9')
+os.system('sudo ln -s -f /dev/video1 /dev/video9')
+replace video 1 with the camera that is on top, video2 with the camera that is on the bottom
+
+roscore
+rosrun captureSkypeChat ROS_telebot_skype_chat_cam_switching.py
+rosrun cameraControl cameraControl
+rosrun rosserial_python serial_node.py /dev/ttyACM0  note that ttyACM0 should correspond to the arduino
+
+should see:
+INFO] [WallTime: 1316148811.617215] ROS Serial Python Node
+[INFO] [WallTime: 1316148811.622546] Connected on /dev/ttyACM0 at 57600 baud
+[INFO] [WallTime: 1316148814.556556] Setup Publisher on robot_commands [std_msgs/String]
+[INFO] [WallTime: 1316148814.572052] Setup Subscriber on SkypeChat [std_msgs/String]
+
+look at 
+rostopic list
+
+should see:
+/SkypeChat
+/robot_commands
+/rosout
+/rosout_agg
+
+try rostopic echo SkypeChat
+
+connect to skype and try some commands
+
+Skype commands:
+
+move with WASD  (w = forward, a = turn left, s = backward, d = turn right)
+Z is a slow stop, X is stop
+
+pan/tilt with UHJKNM (u = up, h = turn left, j = center, k = turn right, n = down, m = max down)
+g = center pan, b = center tilt
+cam or Cam = switch cameras, both for video and pan tilt
+0 = swap cameras, just for pan - tilt, not for video
+1 = use first video device for pan tilt
+2 = use second video device for pan tilt
+3 = use symbolic video devoce for pan tilt (this is the one that should be showing video)
+
+for WASD and UHKN:
+a single character gets you a fast, short response.
+multiple characters (e.g., aaa) gets you bigger responses and, in the case of moving forward or backward, a smooth acceleration and deceleration.
+The first character can be capitalized and the subsequent ones lowercase.
+Otherwise, use all uppercase or all lowercase.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
