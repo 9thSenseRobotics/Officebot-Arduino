@@ -13,7 +13,7 @@ substituting the actual device name for video1.  Do that for each camera.
 sudo ln -s -f /dev/video1 /dev/video9
 substitute the upper camera device name for video1
 and enter the sudo password when that comes up.  sudo is needed for camera device switching,
-but it is just needed once per command window so it is OK
+Trying to figure  out how to make this automatic.
 
 ls /dev/vid*
 and make sure that /dev/video9 is there.
