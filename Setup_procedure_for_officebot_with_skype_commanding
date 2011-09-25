@@ -6,7 +6,11 @@ check the video devices that are connected and find out which ones they are.
 Be sure that this corresponds to what is specified in the code.
 Soon we will change these to parameters that are automatically set, but for now
 
-sudo ln -s -f /dev/video1 /dev/video9'
+test pan/tilt with
+uvcdynctrl -d /dev/video1 -s "Pan/tilt Reset" -- 3
+substituting the actual device name for video1.  Do that for each camera.
+
+sudo ln -s -f /dev/video1 /dev/video9
 substitute the upper camera device name for video1
 and enter the sudo password when that comes up.  sudo is needed for camera device switching,
 but it is just needed once per command window so it is OK
@@ -63,7 +67,16 @@ should see:
 
 try rostopic echo SkypeChat
 
-connect to skype and try some commands
+connect to skype with two accounts and 
+enter either 
+cam or Cam
+and go to the terminal running
+ROS_telebot_skype_chat_cam_switching_rev1.py
+an enter the password.  (working on automating this)
+
+close the extra skype account
+
+Now you are ready to go.
 
 Skype commands:
 
