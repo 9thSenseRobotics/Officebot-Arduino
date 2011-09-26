@@ -46,41 +46,43 @@ pub = rospy.Publisher('SkypeChat', String)
 
 # Callback for property change events
 def edited_onchange(event, api):
-	r = re.search (r'CHATMESSAGE (\d+) (\w+) (.*)', event)
-	if not r: return   # event is not for us
-	id = r.group(1).strip()
-	prop = r.group(2).strip()
-	params = r.group(3).strip()
-	
-	if prop == 'EDITED_BY':
-		# Comes only when changed
-		edited_by[id] = params
-	elif prop == 'EDITED_TIMESTAMP':
-		edited_timestamp[id] = params
-	elif prop == 'BODY':
-		body[id] = params
-	
-	#print event
-	#print id
-	#print prop
-	#print params
-
-	ret = api.send_and_block('GET CHATMESSAGE ' + str(id) + ' BODY')
-	r = re.search (r'CHATMESSAGE ' + str(id) + ' BODY (.+)', ret)
-	
-	if (prop == 'STATUS' and params == 'RECEIVED'):
-		messageBody = r.group(1).strip()
-		print messageBody
+	try: 
+		r = re.search (r'CHATMESSAGE (\d+) (\w+) (.*)', event)
+		if not r: return   # event is not for us
+		id = r.group(1).strip()
+		prop = r.group(2).strip()
+		params = r.group(3).strip()
 		
-		# search the message body for something that matches in chat_string_table
-		#for i in range(0, len(chat_string_table)):
-		#	if chat_string_table[i] == messageBody:
-		#		os.system(chat_command_table[i])
-		#os.system("rostopic pub /SkypeChat std_msgs/String " + messageBody)
-		rospy.loginfo(messageBody)
-		pub.publish(messageBody)
-		#os.system('rostopic pub /SkypeChat std_msgs/String "f"')
+		if prop == 'EDITED_BY':
+			# Comes only when changed
+			edited_by[id] = params
+		elif prop == 'EDITED_TIMESTAMP':
+			edited_timestamp[id] = params
+		elif prop == 'BODY':
+			body[id] = params
+		
+		#print event
+		#print id
+		#print prop
+		#print params
 	
+		ret = api.send_and_block('GET CHATMESSAGE ' + str(id) + ' BODY')
+		r = re.search (r'CHATMESSAGE ' + str(id) + ' BODY (.+)', ret)
+		
+		if (prop == 'STATUS' and params == 'RECEIVED'):
+			messageBody = r.group(1).strip()
+			print messageBody
+			
+			# search the message body for something that matches in chat_string_table
+			#for i in range(0, len(chat_string_table)):
+			#	if chat_string_table[i] == messageBody:
+			#		os.system(chat_command_table[i])
+			#os.system("rostopic pub /SkypeChat std_msgs/String " + messageBody)
+			rospy.loginfo(messageBody)
+			pub.publish(messageBody)
+			#os.system('rostopic pub /SkypeChat std_msgs/String "f"')
+	except:
+		print 'Error'	
 
 if __name__ == "__main__":
 	parser = OptionParser('%prog [options]')
