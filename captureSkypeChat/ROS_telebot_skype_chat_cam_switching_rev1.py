@@ -105,7 +105,7 @@ def edited_onchange(event, api):
 			
 			# create a symlink in /dev for the camera (our fake cam is on video9)
 			if (lastCam == True):
-				os.system('sudo ln -s -f /dev/video0 /dev/video9')
+				os.system('sudo ln -s -f /dev/video2 /dev/video9')
 				lastCam = False
 			else:
 				os.system('sudo ln -s -f /dev/video1 /dev/video9')
