@@ -59,6 +59,7 @@ def edited_onchange(event, api):
 	# check for a new call so we can grab it's ID
 	# Strings look like: Received: CALL 79 STATUS INPROGRESS
 	#    Info: run_queue ['CALL 79 STATUS INPROGRESS']
+	print event
 	r = re.search (r'CALL (\d+) (\w+) (.*)', event)
 	if (r != None):
 		# this is a call
@@ -99,6 +100,12 @@ def edited_onchange(event, api):
 		messageBody = r.group(1).strip()
 		print messageBody
 
+		if (messageBody.find('status') >= 0):
+			print 'Send status ' + callId
+			myalaina = api.send_and_block('CHAT CREATE alainahardie')
+			mylist = myalaina.split()
+			print 'message reply ' + mylist[1]
+			api.send_and_block('CHATMESSAGE ' + mylist[1] + ' I am really hungry. Thanks for asking!')
 		if (messageBody.find('Cam') >= 0 or messageBody.find('cam') >= 0):
 			print 'SWITCH CAMERAS'
 			print callId
