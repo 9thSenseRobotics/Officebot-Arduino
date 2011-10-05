@@ -13,7 +13,8 @@
 # This file requires python-xlib:
 #	sudo apt-get install python-xlib
 #
-import roslib; roslib.load_manifest('captureSkypeChat')
+import roslib; roslib.load_manifest('captureSkypeChat')  
+roslib.load_manifest('turtlebot_node')
 import rospy
 from std_msgs.msg import String
 import sys
@@ -21,7 +22,7 @@ import os
 import re
 import datetime
 from optparse import OptionParser
-
+from turtlebot_node.msg import TurtlebotSensorState
 from skype_api import *
 
 appname = 'telebot_command_parser'
@@ -29,7 +30,7 @@ appname = 'telebot_command_parser'
 # change these to add commands:
 chat_string_table = ['list_dir', 'echo_hi']
 chat_command_table = ['ls', 'echo "hi"']
-
+chat_return_status_table = ['battery', 'Battery']
 
 # tables by chat id
 edited_by = {}
@@ -38,6 +39,11 @@ body = {}
 
 callId = ''
 lastCam = True
+localUser = ''
+remoteUser = ''
+charge = 0
+capacity = 0
+pct = 0
 
 pub = rospy.Publisher('SkypeChat', String)
 
@@ -55,11 +61,16 @@ def edited_onchange(event, api):
 
 	global callId
 	global lastCam
+	global localUser
+	global remoteUser
+	global charge
+	global capacity
+	global pct
 	
 	# check for a new call so we can grab it's ID
 	# Strings look like: Received: CALL 79 STATUS INPROGRESS
 	#    Info: run_queue ['CALL 79 STATUS INPROGRESS']
-	print event
+	#print event
 	r = re.search (r'CALL (\d+) (\w+) (.*)', event)
 	if (r != None):
 		# this is a call
@@ -75,11 +86,19 @@ def edited_onchange(event, api):
 		
 
 	r = re.search (r'CHATMESSAGE (\d+) (\w+) (.*)', event)
-	if not r: return   # event is not for us
-	id = r.group(1).strip()
-	prop = r.group(2).strip()
-	params = r.group(3).strip()
-	
+	r2 = re.search (r'CHAT \#(\w+)\/\$(\w+);(\w+) (\w+) (.*)', event)
+	if not r and not r2: return   # event is not for us
+	if r:
+		id = r.group(1).strip()
+		prop = r.group(2).strip()
+		params = r.group(3).strip()
+	elif r2:
+		#print r2
+		remoteUser = r2.group(1).strip()
+		localUser = r2.group(2).strip()
+		#print 'Found remote user ' + remoteUser + ', local user ' + localUser
+		return
+		
 	if prop == 'EDITED_BY':
 		# Comes only when changed
 		edited_by[id] = params
@@ -88,24 +107,23 @@ def edited_onchange(event, api):
 	elif prop == 'BODY':
 		body[id] = params
 	
-	#print event
-	#print id
-	#print prop
-	#print params
-
 	ret = api.send_and_block('GET CHATMESSAGE ' + str(id) + ' BODY')
 	r = re.search (r'CHATMESSAGE ' + str(id) + ' BODY (.+)', ret)
 	
 	if (prop == 'STATUS' and params == 'RECEIVED'):
 		messageBody = r.group(1).strip()
-		print messageBody
 
-		if (messageBody.find('status') >= 0):
-			print 'Send status ' + callId
-			myalaina = api.send_and_block('CHAT CREATE alainahardie')
-			mylist = myalaina.split()
-			print 'message reply ' + mylist[1]
-			api.send_and_block('CHATMESSAGE ' + mylist[1] + ' I am really hungry. Thanks for asking!')
+		if (messageBody.find('battery') >= 0):
+			print 'Send battery status to ' + remoteUser + ' from ' + localUser
+			try:
+				chatCreateResult = api.send_and_block('CHAT CREATE ' + remoteUser)
+				mylist = chatCreateResult.split()
+				pct = round((float(charge) / float(capacity)) * 100)
+			
+				statusString = "Battery capacity is " +  str(pct) + '%'
+				api.send_and_block('CHATMESSAGE ' + mylist[1] + ' ' + statusString)
+			except NameError:
+				print 'User must chat with us first'
 		if (messageBody.find('Cam') >= 0 or messageBody.find('cam') >= 0):
 			print 'SWITCH CAMERAS'
 			print callId
@@ -124,19 +142,21 @@ def edited_onchange(event, api):
 			# restart skype video
 			ret = api.send_and_block('ALTER CALL ' + str(callId) + ' START_VIDEO_SEND')
 		
-		# search the message body for something that matches in chat_string_table
-		#for i in range(0, len(chat_string_table)):
-		#	if chat_string_table[i] == messageBody:
-		#		os.system(chat_command_table[i])
-		
-		# search the message body for something that matches in chat_string_table
-		#for i in range(0, len(chat_string_table)):
-		#	if chat_string_table[i] == messageBody:
-		#		os.system(chat_command_table[i])
-		#os.system("rostopic pub /SkypeChat std_msgs/String " + messageBody)
 		rospy.loginfo(messageBody)
 		pub.publish(messageBody)
-		#os.system('rostopic pub /SkypeChat std_msgs/String "f"')
+
+def sensorStateCallback (TurtlebotSensorState):
+	global charge
+	global capacity
+	#print 'in callback'
+	charge = TurtlebotSensorState.charge
+	capacity = TurtlebotSensorState.capacity
+	#print charge
+	
+
+def sensorListener ():
+	rospy.Subscriber('/turtlebot_node/sensor_state', TurtlebotSensorState, sensorStateCallback)
+	print 'subscriber defined'
 	
 
 if __name__ == "__main__":
@@ -162,6 +182,8 @@ if __name__ == "__main__":
 
 	api.set_callback(edited_onchange, api)
 
+	sensorListener () # track /turtlebot_node/sensor_state
+	
 	print 'Running...'
 	try:
 		while True:
