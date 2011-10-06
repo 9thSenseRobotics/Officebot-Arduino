@@ -30,8 +30,9 @@ appname = 'telebot_command_parser'
 # change these to add commands:
 chat_string_table = ['list_dir', 'echo_hi']
 chat_command_table = ['ls', 'echo "hi"']
-chat_return_status_table = ['battery', 'Battery']
+chat_return_status_table = ['battery', 'Battery', 'help', 'Help']
 
+help_driving = "To drive, use WASD: 'w' to move forward, 's' to move backwards, 'a' to turn left, and 'd' to turn right. You can send up to five of the same letter to repeat the motion. NOTE: the increase is not linear. In other words, 'ww' is more than the equivalent of two W's, and 'www' is much more than the equivalent of three W's."
 # tables by chat id
 edited_by = {}
 edited_timestamp = {}
@@ -71,6 +72,7 @@ def edited_onchange(event, api):
 	# Strings look like: Received: CALL 79 STATUS INPROGRESS
 	#    Info: run_queue ['CALL 79 STATUS INPROGRESS']
 	#print event
+	
 	r = re.search (r'CALL (\d+) (\w+) (.*)', event)
 	if (r != None):
 		# this is a call
@@ -130,10 +132,10 @@ def edited_onchange(event, api):
 			
 			# create a symlink in /dev for the camera (our fake cam is on video9)
 			if (lastCam == True):
-				os.system('sudo ln -s -f /dev/video1 /dev/video9')
+				os.system('sudo ln -s -f /dev/video2 /dev/video9')
 				lastCam = False
 			else:
-				os.system('sudo ln -s -f /dev/video2 /dev/video9')
+				os.system('sudo ln -s -f /dev/video1 /dev/video9')
 				lastCam = True
 			
 			# stop skype video
@@ -172,7 +174,7 @@ if __name__ == "__main__":
 
 	rospy.init_node('SkypeListener')
 	
-	os.system('sudo ln -s -f /dev/video2 /dev/video9')
+	os.system('sudo ln -s -f /dev/video1 /dev/video9')
 	
 	try:
 		api = SkypeAPI(appname, options.debug)
