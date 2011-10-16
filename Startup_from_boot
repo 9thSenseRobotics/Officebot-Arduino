@@ -2,6 +2,9 @@ To run the code, procedure from bootup:
 
 
 check that the arduino connects as /dev/ttyACM0
+assume that
+power_toggle_for_create.pde
+is on the arduino, if not sure, load it.
 
 test pan/tilt with
 
