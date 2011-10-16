@@ -1,0 +1,97 @@
+To run the code, procedure from bootup:
+
+check that the arduino connects as /dev/ttyACM0
+
+test pan/tilt with
+
+uvcdynctrl -d /dev/pricamera -s "Pan/tilt Reset" -- 3
+
+sudo ln -s -f /dev/pricamera  /dev/video9
+
+and enter the sudo password when that comes up.  sudo is needed for camera device switching,
+
+ls /dev/vid*
+
+and make sure that /dev/video9 is there.
+
+
+power up the create
+
+start skype
+
+check that skype video options are set to use video9 and test that there is a good video feed coming through
+
+gedit ROS_telebot_Skype_two_cams.py
+
+go to lines 135 and 138 and 177
+
+os.system('sudo ln -s -f /dev/video1 /dev/video9')
+
+os.system('sudo ln -s -f /dev/video0 /dev/video9')
+
+os.system('sudo ln -s -f /dev/video0 /dev/video9')
+
+replace video0 with the camera that is on top, video1 with the camera that is on the bottom
+
+save the file, update git (so that this version does not get ahead of the others and cause a conflict when updating later).
+
+roscore
+
+rosrun captureSkypeChat ROS_telebot_skype_two_cams.py
+
+You will have to enter the sudo password to allow it to switch cameras
+
+roslaunch createControl createControl.launch
+
+rosrun cameraControl cameraControl_vid1_vid2
+Note that this could also be 
+rosrun cameraControl cameraControl_vid1_vid2
+because parameters are used, so the vid designation is overridden.
+
+look at 
+
+rostopic list
+
+try rostopic echo SkypeChat
+
+
+connect to skype with two accounts and 
+
+enter either 
+
+cam or Cam
+
+and go to the terminal running
+
+ROS_telebot_skype_chat_cam_switching_rev1.py
+
+an enter the password.  (working on automating this)
+
+close the extra skype account
+
+Now you are ready to go.
+
+
+Skype commands:
+
+move with WASD  (w = forward, a = turn left, s = backward, d = turn right)
+
+Z is a slow stop, X is stop
+
+pan/tilt with UHJKNM (u = up, h = turn left, j = center, k = turn right, n = down, m = max down)
+
+cam or Cam = switch cameras, both for video and pan tilt, this is the main way to change cameras
+Sometimes it take a while to swap or fails.  If that happens, just hangup and call back and it will work fine.  Also, the small window on the bot that shows outgoing video freezes when the cameras are swapped.  Again, this is fixed if you hang up and call back.
+
+for WASD and UHKN:
+
+a single character gets you a fast, short response.
+
+multiple characters (e.g., aaa) gets you bigger responses and, in the case of moving forward or backward, a smooth acceleration and deceleration.
+
+The first character can be capitalized and the subsequent ones lowercase.
+
+Otherwise, use all uppercase or all lowercase.
+
+
+
