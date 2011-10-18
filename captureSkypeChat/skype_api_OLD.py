@@ -1,5 +1,8 @@
 #! /usr/bin/python
 #
+#	  Copyright (c) 2011, 9th Sense, Inc.
+#	  All rights reserved.
+#
 # Some tools to use the Skype Public API under Linux.
 # Uses X11 as communication protocol. Tested with Skype version 1.4.
 #
