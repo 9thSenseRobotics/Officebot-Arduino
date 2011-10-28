@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#! /usr/bin/env python
 #
 #	  Copyright (c) 2011, 9th Sense, Inc.
 #	  All rights reserved.
@@ -64,8 +64,8 @@ syslog.syslog ("Telebot - I found Google")
 
 print "Starting Skype"
 os.system('skype &')
-print "Waiting 10 sec for Skype to start"
-time.sleep(10)
+print "Waiting 20 sec for Skype to start"
+time.sleep(20)
 
 appname = 'telebot_command_parser'
 
