@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 #
 #	  Copyright (c) 2011, 9th Sense, Inc.
 #	  All rights reserved.
@@ -32,12 +32,40 @@ roslib.load_manifest('turtlebot_node')
 import rospy
 from std_msgs.msg import String
 import sys
+import syslog
+import pycurl
+import cStringIO
 import os
 import re
 import datetime
+import time
 from optparse import OptionParser
 from turtlebot_node.msg import TurtlebotSensorState
 from skype_api import *
+
+# just  hang out until the internets are up
+status = 0
+syslog.syslog("Telebot - Skype API script started")
+while (status < 200):
+	try:
+		b = cStringIO.StringIO()
+		c = pycurl.Curl()
+		c.setopt(c.URL, 'http://www.google.com/')
+		c.setopt(c.WRITEFUNCTION,b.write)
+		c.perform()
+		status = c.getinfo(pycurl.HTTP_CODE)
+		print status
+		c.close()
+	except:
+		continue
+syslog.syslog ("Telebot - I found Google")
+
+# Now start Skype
+
+print "Starting Skype"
+os.system('skype &')
+print "Waiting 10 sec for Skype to start"
+time.sleep(10)
 
 appname = 'telebot_command_parser'
 
