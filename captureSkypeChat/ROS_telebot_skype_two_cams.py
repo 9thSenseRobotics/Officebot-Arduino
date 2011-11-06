@@ -62,10 +62,25 @@ syslog.syslog ("Telebot - I found Google")
 
 # Now start Skype
 
-print "Starting Skype"
-os.system('skype &')
-print "Waiting 20 sec for Skype to start"
-time.sleep(20)
+
+skypeIsRunning = False
+
+for line in os.popen ("ps ax"): 	# get the process list
+	sl = line.split()		# split on whitespace
+	pid = sl[0]
+	processName = sl[4]
+	if (processName.startswith ("skype")): # skype is already running
+		print 'Skype is already running in process ' + str(pid)
+		skypeIsRunning = True # Don't try to start it again
+	if (processName.find(os.path.basename(__file__)) > -1): 	# this script is already running
+		print 'The ' + __file__ + ' script is already running. Exiting.'
+		exit						
+
+if not skypeIsRunning:
+	print "Starting Skype"
+	os.system('skype &')
+	print "Waiting 20 sec for Skype to start"
+	time.sleep(20)
 
 appname = 'telebot_command_parser'
 
