@@ -6,10 +6,9 @@
 # Shows Skype edited chat messages
 # MODIFIED to be a CHAT PARSER
 #   by Andrew Barry, (c) Copyright 2011, abarry@gmail.com
-#
+#   by Alaina Hardie, (c) Copyright 2011, alaina@9thsense.com
 # Original:
 #   (c) Copyright 2007, Vincent Oberle, vincent@oberle.org
-
 #     This program is free software: you can redistribute it and/or modify
 #     it under the terms of the GNU General Public License as published by
 #     the Free Software Foundation, either version 3 of the License, or
@@ -45,7 +44,7 @@ from skype_api import *
 
 # just  hang out until the internets are up
 status = 0
-syslog.syslog("Telebot - Skype API script started")
+syslog.syslog("Telo - Skype API script started")
 while (status < 200):
 	try:
 		b = cStringIO.StringIO()
@@ -58,7 +57,7 @@ while (status < 200):
 		c.close()
 	except:
 		continue
-syslog.syslog ("Telebot - I found Google")
+syslog.syslog ("Telo - I found Google")
 
 # Now start Skype
 
@@ -125,7 +124,7 @@ def edited_onchange(event, api):
 	global capacity
 	global pct
 	
-	# check for a new call so we can grab it's ID
+	# check for a new call so we can grab its ID
 	# Strings look like: Received: CALL 79 STATUS INPROGRESS
 	#    Info: run_queue ['CALL 79 STATUS INPROGRESS']
 	#print event
@@ -166,7 +165,11 @@ def edited_onchange(event, api):
 	elif prop == 'BODY':
 		body[id] = params
 	
-	ret = api.send_and_block('GET CHATMESSAGE ' + str(id) + ' BODY')
+	try: 
+		ret = api.send_and_block('GET CHATMESSAGE ' + str(id) + ' BODY')
+	except:
+		print "An error occurred trying to get the message body"
+		
 	r = re.search (r'CHATMESSAGE ' + str(id) + ' BODY (.+)', ret)
 	
 	if (prop == 'STATUS' and params == 'RECEIVED'):
@@ -195,11 +198,12 @@ def edited_onchange(event, api):
 				os.system('sudo ln -s -f /dev/video1 /dev/video9')
 				lastCam = True
 			
-			# stop skype video
-			ret = api.send_and_block('ALTER CALL ' + str(callId) + ' STOP_VIDEO_SEND')
-			
-			# restart skype video
-			ret = api.send_and_block('ALTER CALL ' + str(callId) + ' START_VIDEO_SEND')
+			try:
+				# stop and restart skype video
+				ret = api.send_and_block('ALTER CALL ' + str(callId) + ' STOP_VIDEO_SEND')
+				ret = api.send_and_block('ALTER CALL ' + str(callId) + ' START_VIDEO_SEND')
+			except:
+				print 'An error occurred trying to restart the video sending'
 		
 		rospy.loginfo(messageBody)
 		pub.publish(messageBody)
@@ -215,7 +219,7 @@ def sensorStateCallback (TurtlebotSensorState):
 
 def sensorListener ():
 	rospy.Subscriber('/turtlebot_node/sensor_state', TurtlebotSensorState, sensorStateCallback)
-	print 'subscriber defined'
+	print 'TurtleBot sensor subscriber defined'
 	
 
 if __name__ == "__main__":
