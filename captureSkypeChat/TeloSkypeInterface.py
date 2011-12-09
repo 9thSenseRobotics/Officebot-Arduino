@@ -69,6 +69,7 @@ skypePid = 0
 
 # wait for the Internet connection to come up (if you can't get to Google, you probably can't get to Skype
 def waitForInternetConnection():
+	status = 0
 	syslog.syslog("Telo - Skype API script started")
 	while (status < 200):
 		try:
@@ -87,6 +88,7 @@ def waitForInternetConnection():
 
 # start Skype if it isn't running; returns skype's PID
 def startSkype():
+	global skypeIsRunning
 	for line in os.popen ("ps ax"): 	# get the process list
 		sl = line.split()		# split on whitespace
 		skypePid = sl[0]
@@ -206,10 +208,6 @@ def skypeChange(event, api):
 	
 # The main stuff
 if __name__ == "__main__":
-
-	if len(args) > 0:
-		parser.print_help()
-		sys.exit(0)
 
 	# block until Internet connection is up
 	waitForInternetConnection()
