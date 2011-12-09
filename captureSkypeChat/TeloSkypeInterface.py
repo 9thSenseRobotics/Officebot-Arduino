@@ -65,7 +65,7 @@ charge = 0
 capacity = 0
 pct = 0
 skypeIsRunning = False
-
+skypePid = 0
 
 # wait for the Internet connection to come up (if you can't get to Google, you probably can't get to Skype
 def waitForInternetConnection():
@@ -85,25 +85,30 @@ def waitForInternetConnection():
 	syslog.syslog ("Telo - I found Google")
 # End waitForInternetConnection()
 
-# start Skype if it isn't running
+# start Skype if it isn't running; returns skype's PID
 def startSkype():
-	global skypeIsRunning
 	for line in os.popen ("ps ax"): 	# get the process list
 		sl = line.split()		# split on whitespace
-		pid = sl[0]
+		skypePid = sl[0]
 		processName = sl[4]
 		if (processName.startswith ("skype")): # skype is already running
-			print 'Skype is already running in process ' + str(pid)
+			print 'Skype is already running in process ' + str(skypePid)
 			skypeIsRunning = True # Don't try to start it again
+			return (skypePid)
 		if (processName.find(os.path.basename(__file__)) > -1): 	# this script is already running
 			print 'The ' + __file__ + ' script is already running. Exiting.'
 			exit						
-
 	if not skypeIsRunning:
 		print "Starting Skype"
 		os.system('skype &')
 		print "Waiting 20 sec for Skype to start"
 		time.sleep(20)
+		for line in os.popen ("ps ax"): 	# get the process list
+			sl = line.split()		# split on whitespace
+			skypePid = sl[0]
+		if (processName.startswith ("skype")): # skype is already running
+			skypeIsRunning = True # Don't try to start it again
+			return (skypePid)
 # end startSkype()
 
 # ROS callback for message received from Turtlebot sensor state
@@ -210,7 +215,7 @@ if __name__ == "__main__":
 	waitForInternetConnection()
 	
 	# make sure Skype is running; if not, start it
-	startSkype()
+	skypePid = startSkype()
 
 	# init all of the ROS stuff
 	rospy.init_node('SkypeListener')
@@ -234,6 +239,6 @@ if __name__ == "__main__":
 	try:
 		while True:
 			api.poll_events(1)
-			startSkype()
+			skypePid = startSkype()
 	except KeyboardInterrupt: # hides error message on control C
 		print 'Exited'
