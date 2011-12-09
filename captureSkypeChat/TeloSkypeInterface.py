@@ -87,7 +87,7 @@ def waitForInternetConnection():
 
 # start Skype if it isn't running
 def startSkype():
-
+	global skypeIsRunning
 	for line in os.popen ("ps ax"): 	# get the process list
 		sl = line.split()		# split on whitespace
 		pid = sl[0]
@@ -234,5 +234,6 @@ if __name__ == "__main__":
 	try:
 		while True:
 			api.poll_events(1)
+			startSkype()
 	except KeyboardInterrupt: # hides error message on control C
 		print 'Exited'
